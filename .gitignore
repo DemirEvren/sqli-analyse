@@ -20,3 +20,4 @@ test-results/
 #istio
 **/istio-*
 scripts/deploy-loadtest.sh
+scripts/deploy-shelfware.sh
