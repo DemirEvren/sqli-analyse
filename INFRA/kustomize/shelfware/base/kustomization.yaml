@@ -2,6 +2,6 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - app/echo-deploy.yaml
-  - app/echo-svc.yaml
+  - app/backend-deploy.yaml
+  - app/backend-svc.yaml
   - net/httproute.yaml

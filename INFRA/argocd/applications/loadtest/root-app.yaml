@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loadtest-root
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/PXL-Systems-Expert/2526-ex-DemirEvren.git
+    targetRevision: main
+    path: INFRA/kustomize/locust/overlays/loadtest
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: loadtest
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
