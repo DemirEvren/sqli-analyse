@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: prod-shelfware
+
+resources:
+  - namespace.yaml
+  - ../../base
+
+patches:
+  - target:
+      kind: HTTPRoute
+      name: shelfware-route
+    patch: |-
+      - op: replace
+        path: /spec/hostnames/0
+        value: shelfware.local

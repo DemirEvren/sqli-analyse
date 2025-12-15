@@ -16,3 +16,6 @@
 
 # Optional: local test artifacts
 test-results/
+
+#istio
+**/istio-*
