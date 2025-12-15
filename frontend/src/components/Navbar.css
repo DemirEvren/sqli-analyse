@@ -1,0 +1,119 @@
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--secondary, #2c3e50);
+  color: white;
+  padding: 0 20px;
+  height: 70px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+}
+
+/* Fix for the logo section - make it occupy only the necessary width */
+.navbar-logo {
+  flex: 0 0 auto;
+  max-width: max-content;
+}
+
+/* Ensure logo and text stay together */
+.navbar-logo a {
+  display: flex;
+  align-items: center;
+  color: white;
+  text-decoration: none;
+  gap: 12px;
+}
+
+/* Make sure text doesn't wrap */
+.logo-text {
+  font-size: 1.5rem;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.navbar-links {
+  display: flex;
+  align-items: center;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.navbar-links li {
+  margin-left: 20px;
+}
+
+.logo-image {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
+}
+
+.navbar-links li a,
+.logout-button {
+  color: #ecf0f1;
+  text-decoration: none;
+  padding: 10px;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+  cursor: pointer;
+}
+
+.navbar-links li a:hover,
+.logout-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.navbar-links li.active a {
+  background-color: rgba(255, 255, 255, 0.2);
+  font-weight: bold;
+}
+
+.logout-button {
+  background-color: transparent;
+  border: 1px solid #ecf0f1;
+  font-size: 0.9rem;
+}
+
+.logout-button:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    flex-direction: column;
+    height: auto;
+    padding: 15px;
+  }
+  
+  .navbar-logo {
+    margin-bottom: 15px;
+    align-self: flex-start;
+  }
+  
+  .navbar-links {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .navbar-links li {
+    margin: 0 10px 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar-links {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .navbar-links li {
+    margin: 5px 0;
+  }
+  
+  .logo-text {
+    font-size: 1.2rem;
+  }
+}

@@ -1,0 +1,117 @@
+/* frontend/src/pages/AuthForms.css */
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 70vh;
+    padding: 20px;
+  }
+  
+  .auth-form-wrapper {
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    padding: 30px;
+    width: 100%;
+    max-width: 450px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  .auth-form-wrapper h1 {
+    color: var(--text);
+    margin-top: 0;
+    margin-bottom: 24px;
+    text-align: center;
+    font-size: 1.8rem;
+  }
+  
+  .auth-error {
+    background-color: var(--danger);
+    color: white;
+    padding: 12px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+  }
+  
+  .auth-form .form-group {
+    margin-bottom: 20px;
+  }
+  
+  .auth-form label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  
+  .auth-form input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 16px;
+    background-color: var(--card-bg);
+    color: var(--text);
+    transition: border-color 0.2s;
+  }
+  
+  .auth-form input:focus {
+    border-color: var(--primary);
+    outline: none;
+  }
+  
+  .auth-form input:disabled {
+    background-color: rgba(0, 0, 0, 0.05);
+    cursor: not-allowed;
+  }
+  
+  .auth-button {
+    width: 100%;
+    padding: 12px;
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-top: 10px;
+  }
+  
+  .auth-button:hover {
+    background-color: var(--secondary);
+  }
+  
+  .auth-button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+  
+  .auth-links {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--text);
+  }
+  
+  .auth-links a {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 500;
+  }
+  
+  .auth-links a:hover {
+    text-decoration: underline;
+  }
+  
+  /* Dark mode support */
+  body.dark-mode .auth-form input {
+    background-color: var(--card-bg-dark);
+    color: var(--text-dark);
+    border-color: var(--border-dark);
+  }
+  
+  body.dark-mode .auth-form input:disabled {
+    background-color: rgba(255, 255, 255, 0.1);
+  }

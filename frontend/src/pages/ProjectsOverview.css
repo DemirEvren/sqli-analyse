@@ -1,0 +1,165 @@
+/* frontend/src/pages/ProjectsOverview.css with auth styling */
+.projects-overview {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.overview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.overview-header h1 {
+  margin: 0;
+  color: var(--text);
+  font-size: 2.2rem;
+}
+
+.add-project-button, .login-to-add-button {
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+
+.add-project-button {
+  background-color: var(--success);
+  color: white;
+}
+
+.login-to-add-button {
+  background-color: var(--primary);
+  color: white;
+}
+
+.add-project-button:hover {
+  background-color: #1e944f;
+  color: white;
+}
+
+.login-to-add-button:hover {
+  background-color: var(--secondary);
+  color: white;
+}
+
+.error-message {
+  background-color: var(--danger);
+  color: white;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.filters {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  gap: 20px;
+}
+
+.search-box {
+  flex-grow: 1;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 16px;
+  background-color: var(--card-bg);
+  color: var(--text);
+}
+
+.status-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-filter label {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.status-filter select {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 16px;
+  background-color: var(--card-bg);
+  color: var(--text);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 0;
+  color: var(--text);
+}
+
+.empty-add-button {
+  display: inline-block;
+  margin-top: 15px;
+  background-color: var(--primary);
+  color: white;
+  text-decoration: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.empty-add-button:hover {
+  background-color: var(--secondary);
+}
+
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+/* Authentication prompt */
+.auth-prompt {
+  background-color: var(--card-bg);
+  border-radius: 8px;
+  padding: 30px;
+  text-align: center;
+  margin: 30px 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.auth-prompt p {
+  font-size: 1.1rem;
+  color: var(--text);
+  margin-bottom: 15px;
+}
+
+.auth-prompt a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-prompt a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .filters {
+    flex-direction: column;
+  }
+  
+  .overview-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  
+  .add-project-button, .login-to-add-button {
+    align-self: flex-start;
+  }
+}

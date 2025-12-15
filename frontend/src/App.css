@@ -1,0 +1,342 @@
+/* ======================================
+   THEME VARIABLES
+====================================== */
+:root {
+  /* Light theme colors */
+  --bg-light: #f5f5f5;
+  --text-light: #333;
+  --card-bg-light: #fff;
+  --border-light: #ddd;
+  --primary-light: #3498db;
+  --secondary-light: #2c3e50;
+  --success-light: #2ecc71;
+  --warning-light: #f39c12;
+  --danger-light: #e74c3c;
+  --muted-light: #95a5a6;
+  
+  /* Dark theme colors */
+  --bg-dark: #1a1a1a;
+  --text-dark: #f5f5f5;
+  --card-bg-dark: #2c2c2c;
+  --border-dark: #444;
+  --primary-dark: #3498db;
+  --secondary-dark: #34495e;
+  --success-dark: #27ae60;
+  --warning-dark: #e67e22;
+  --danger-dark: #c0392b;
+  --muted-dark: #7f8c8d;
+  
+  /* Default to light mode variables */
+  --bg: var(--bg-light);
+  --text: var(--text-light);
+  --card-bg: var(--card-bg-light);
+  --border: var(--border-light);
+  --primary: var(--primary-light);
+  --secondary: var(--secondary-light);
+  --success: var(--success-light);
+  --warning: var(--warning-light);
+  --danger: var(--danger-light);
+  --muted: var(--muted-light);
+}
+
+/* Dark mode class to apply to body */
+body.dark-mode {
+  --bg: var(--bg-dark);
+  --text: var(--text-dark);
+  --card-bg: var(--card-bg-dark);
+  --border: var(--border-dark);
+  --primary: var(--primary-dark);
+  --secondary: var(--secondary-dark);
+  --success: var(--success-dark);
+  --warning: var(--warning-dark);
+  --danger: var(--danger-dark);
+  --muted: var(--muted-dark);
+}
+
+/* ======================================
+   BASIC LAYOUT & TYPOGRAPHY
+====================================== */
+body, html {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+}
+
+body > #root {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.app {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.main-content {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 0 40px;
+}
+
+.main-content > * {
+  width: 100%;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text);
+  margin-top: 0;
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* ======================================
+   CONTAINER WIDTHS
+====================================== */
+.projects-overview,
+.project-form-container,
+.project-details-container {
+  width: 90%;
+  max-width: 2500px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 20px;
+}
+
+.project-form {
+  max-width: 2000px;
+  margin: 0 auto;
+}
+
+/* ======================================
+   NAVBAR
+====================================== */
+.navbar {
+  background-color: var(--secondary);
+  width: 100%;
+  padding: 0 5%;
+  display: flex;
+  align-items: center;
+  height: 70px;
+}
+
+.navbar-logo {
+  margin-left: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.navbar-logo a {
+  display: flex;
+  align-items: center;
+}
+
+.logo-image {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
+  margin-right: 15px; /* Space between logo and text */
+}
+
+.logo-text {
+  font-size: 1.5rem;
+  font-weight: bold;
+  position: static; /* instead of absolute */
+  left: auto; /* instead of 50% */
+  transform: none; /* instead of translateX(-50%) */
+  white-space: nowrap;
+}
+
+.navbar-links {
+  margin-left: auto; /* Push links to the right */
+}
+
+/* ======================================
+   FOOTER
+====================================== */
+.footer {
+  width: 100%;
+  padding: 8 0;
+  background-color: var(--secondary);
+  color: white;
+  text-align: center;
+  font-size: 0.9rem;
+  margin-top: 40px;
+}
+
+/* ======================================
+   THEME TOGGLE
+====================================== */
+.theme-toggle {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: var(--secondary);
+  color: white;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  border: none;
+  font-size: 24px;
+}
+
+/* ======================================
+   PROJECT GRID
+====================================== */
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 35px; /* Increased from 25px to prevent overlap */
+  row-gap: 35px; /* Add more vertical space between rows */
+  width: 100%;
+}
+
+/* ======================================
+   CARD STYLING
+====================================== */
+.project-card, 
+.project-form, 
+.project-details-card {
+  background-color: var(--card-bg);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.project-card {
+  height: auto; /* Let cards take their natural height */
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0; /* Remove any bottom margin that might cause overlap */
+}
+
+.hardware-info, 
+.hardware-info-box {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* ======================================
+   FORM ELEMENTS
+====================================== */
+input, select, textarea {
+  background-color: var(--card-bg);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+label {
+  color: var(--text);
+}
+
+.hint {
+  color: var(--muted);
+}
+
+.error-message {
+  color: var(--danger);
+}
+
+/* ======================================
+   PROJECT TEXT ELEMENTS
+====================================== */
+.overview-header h1,
+.project-form-container h1,
+.project-details-container h1 {
+  color: var(--text);
+}
+
+.project-description,
+.project-metadata span,
+.details-metadata p,
+.empty-state p {
+  color: var(--text);
+}
+
+/* ======================================
+   SEARCH AND FILTERS
+====================================== */
+.filters {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  gap: 40px;
+  align-items: center;
+}
+
+.search-box {
+  flex: 1;
+  max-width: 80%;
+}
+
+.status-filter {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  min-width: 200px;
+  white-space: nowrap;
+}
+
+.status-filter label {
+  margin-right: 5px;
+  font-weight: 500;
+}
+
+.status-filter select {
+  min-width: 120px;
+}
+
+/* ======================================
+   RESPONSIVE ADJUSTMENTS
+====================================== */
+@media (max-width: 768px) {
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-box {
+    flex: 1;
+    max-width: 100%;
+    margin-bottom: 10px;
+  }
+  
+  .status-filter {
+    width: 100%;
+    min-width: auto;
+  }
+  
+  .status-filter select {
+    flex: 1;
+  }
+  
+  .content-container {
+    margin-bottom: 30px;
+  }
+}

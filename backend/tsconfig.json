@@ -1,0 +1,15 @@
+{
+    "compilerOptions": {
+      "target": "es6",
+      "module": "commonjs",
+      "outDir": "./dist",
+      "esModuleInterop": true,
+      "skipLibCheck": true,
+      "forceConsistentCasingInFileNames": true,
+      "resolveJsonModule": true,
+      "types": ["node", "jest"]
+    },
+    "files": ["./src/server.ts"],
+    "typeRoots": ["./node_modules/@types", "./src/types"],
+    "include": ["src", "tests", "express"]
+  }

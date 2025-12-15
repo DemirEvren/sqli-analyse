@@ -1,0 +1,132 @@
+.about-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 20px 40px;
+    color: var(--text);
+  }
+  
+  .about-container h1 {
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 2.2rem;
+    color: var(--text);
+  }
+  
+  .about-content {
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    padding: 30px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 40px;
+  }
+  
+  .about-section {
+    margin-bottom: 30px;
+  }
+  
+  .about-section:last-child {
+    margin-bottom: 0;
+  }
+  
+  .about-section h2 {
+    color: var(--primary);
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.6rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+  }
+  
+  .about-section p {
+    line-height: 1.6;
+    margin-bottom: 15px;
+  }
+  
+  .about-section ul {
+    padding-left: 20px;
+    margin-bottom: 15px;
+  }
+  
+  .about-section li {
+    margin-bottom: 5px;
+    line-height: 1.5;
+  }
+  
+  .tech-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  
+  .tech-item {
+    background-color: rgba(0, 0, 0, 0.03);
+    padding: 15px;
+    border-radius: 6px;
+  }
+  
+  .tech-item h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: var(--text);
+    font-size: 1.2rem;
+  }
+  
+  .tech-item ul {
+    margin-bottom: 0;
+  }
+  
+  .pxl-info {
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    padding: 25px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .pxl-logo-container {
+    margin-bottom: 20px;
+  }
+  
+  .pxl-logo {
+    max-width: 200px;
+    height: auto;
+  }
+  
+  .pxl-info p {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin: 0;
+  }
+  
+  .pxl-info a {
+    color: var(--primary);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  
+  .pxl-info a:hover {
+    text-decoration: underline;
+  }
+  
+  /* Dark mode compatibility */
+  body.dark-mode .tech-item {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  @media (max-width: 768px) {
+    .tech-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .about-content,
+    .pxl-info {
+      padding: 20px;
+    }
+    
+    .pxl-info {
+      flex-direction: column;
+    }
+  }
