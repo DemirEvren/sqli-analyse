@@ -15,25 +15,18 @@ spec:
         role: master
     spec:
       containers:
-        - name: locust
-          image: locustio/locust:2.24.1
-          args:
-            - "-f"
-            - "/mnt/locust/locustfile.py"
-            - "--master"
-          ports:
-            - containerPort: 8089
-            - containerPort: 5557  # voor worker communicatie
-          env:
-            - name: TARGET_ENV
-              value: "prod"
-            - name: HOST_HEADER
-              value: "shelfware.local"
-            - name: BASE_URL
-              value: "http://istio-ingressgateway.istio-system.svc.cluster.local"
-          volumeMounts:
-            - name: locust-script
-              mountPath: /mnt/locust
+      - name: locust
+        image: locustio/locust:2.24.1
+        args:
+          - "-f"
+          - "/mnt/locust/locustfile.py"
+          - "--master"
+        ports:
+          - containerPort: 8089
+          - containerPort: 5557
+        volumeMounts:
+          - name: locust-script
+            mountPath: /mnt/locust
       volumes:
         - name: locust-script
           configMap:
