@@ -19,7 +19,7 @@ patches:
             - name: locust
               env:
               - name: BASE_URL
-                value: "http://172.18.0.2"
+                value: "http://172.18.0.5"
               - name: TARGET_ENV
                 value: "prod"
               - name: HOST_HEADER
@@ -36,7 +36,7 @@ patches:
             - name: locust
               env:
               - name: BASE_URL
-                value: "http://172.18.0.2"
+                value: "http://172.18.0.5"
               - name: TARGET_ENV
                 value: "prod"
               - name: HOST_HEADER
