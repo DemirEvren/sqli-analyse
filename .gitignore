@@ -1,0 +1,18 @@
+# Node
+**/node_modules/
+**/.env
+**/.env.*
+**/dist/
+**/.vite/
+
+# Prisma / logs
+**/*.log
+
+# Kubernetes / tooling
+**/.DS_Store
+
+# k3d/kube
+.kube/
+
+# Optional: local test artifacts
+test-results/
