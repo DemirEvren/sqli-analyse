@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: locust-master
+spec:
+  selector:
+    app: locust
+    role: master
+  ports:
+    - name: web
+      port: 8089
+      targetPort: 8089
+    - name: comm
+      port: 5557
+      targetPort: 5557
