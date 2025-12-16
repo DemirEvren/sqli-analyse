@@ -8,10 +8,7 @@ resources:
   - namespace.yaml
   
   # Gateway API CRDs (moet eerst!)
-  - https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.0/standard-install.yaml
-  
-  # Istio components (in order!)
-  - istio-operator.yaml
-  
+  - gateway-api-crds.yaml
+
   # ArgoCD installation
   - install.yaml
