@@ -4,14 +4,26 @@ kind: Kustomization
 namespace: prod-shelfware
 
 resources:
-  - namespace.yaml
-  - ../../base
+- ../../base
+- namespace.yaml
+- hpa.yaml
 
 patches:
-  - target:
-      kind: HTTPRoute
-      name: shelfware-route
-    patch: |-
-      - op: replace
-        path: /spec/hostnames/0
-        value: shelfware.local
+- target:
+    kind: ConfigMap
+    name: backend-config
+  patch: |-
+    - op: replace
+      path: /data/CORS_ORIGIN
+      value: "http://shelfware.local"
+
+- target:
+    kind: HTTPRoute
+    name: httproute
+  patch: |-
+    - op: replace
+      path: /spec/hostnames/0
+      value: "shelfware.local"
+labels:
+- pairs:
+    environment: prod

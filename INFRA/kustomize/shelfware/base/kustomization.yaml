@@ -2,6 +2,21 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - app/backend-deploy.yaml
-  - app/backend-svc.yaml
-  - net/httproute.yaml
+# Database
+- db/postgres-statefulset.yaml
+- db/postgres-svc.yaml
+- db/postgres-secret.yaml
+
+# Application
+- app/backend-deploy.yaml
+- app/backend-svc.yaml
+- app/backend-configmap.yaml
+- app/frontend-deploy.yaml
+- app/frontend-svc.yaml
+
+# Networking
+- net/httproute.yaml
+
+labels:
+- pairs:
+    app.kubernetes.io/name: shelfware

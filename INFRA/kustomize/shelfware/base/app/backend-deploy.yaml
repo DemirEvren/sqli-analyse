@@ -1,19 +1,77 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: echo
+  name: backend
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: echo
+      app: backend
   template:
     metadata:
       labels:
-        app: echo
+        app: backend
     spec:
+      initContainers:
+      - name: db-migration
+        image: ghcr.io/pxl-systems-expert/shelfware-backend:latest
+        command:
+        - sh
+        - -c
+        - |
+          echo "Running database migrations..."
+          npx prisma migrate deploy
+          echo "Seeding database..."
+          npx prisma db seed || echo "Seed failed or already seeded"
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: database-url
       containers:
-        - name: echo
-          image: ealen/echo-server:latest
-          ports:
-            - containerPort: 80
+      - name: backend
+        image: ghcr.io/demirevren/shelfware-backend:latest
+        ports:
+        - containerPort: 3001
+          name: http
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: database-url
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: jwt-secret
+        - name: BACKEND_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: backend-config
+              key: BACKEND_PORT
+        - name: CORS_ORIGIN
+          valueFrom:
+            configMapKeyRef:
+              name: backend-config
+              key: CORS_ORIGIN
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 500Mi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 3001
+          initialDelaySeconds: 10
+          periodSeconds: 5

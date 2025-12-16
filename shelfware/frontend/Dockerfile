@@ -1,18 +1,37 @@
-# This Dockerfile prepares a frontend application for deployment.
-# It uses a multi-stage build to separate the build process from the final production image.
+# Multi-stage build for React frontend
 
-# In the first stage, the application is built using Node.js:
-# - A production build is generated
+# Stage 1: Build stage
+FROM node:20-alpine AS builder
 
-# In the second stage, the static build output is served using a lightweight web server.
-# - A clean image is used to serve the app efficiently
+WORKDIR /app
 
-# The final container exposes a single HTTP port and runs a web server in the foreground.
+# Copy package files
+COPY package*.json ./
 
-# ----------------------------------------------------
-# Required commands and setup (to be used in the Dockerfile):
-#
-# npm install
-# npm run build
-# Port to expose: 80
-# ----------------------------------------------------
+# Install dependencies
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Build the application (creates /app/dist)
+RUN npm run build
+
+# Stage 2: Production stage with nginx
+FROM nginx:alpine AS production
+
+# Copy nginx configuration
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Copy built files from builder stage
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Expose port 80
+EXPOSE 80
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s \
+  CMD wget --quiet --tries=1 --spider http://localhost/ || exit 1
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]

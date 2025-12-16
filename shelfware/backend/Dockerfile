@@ -1,26 +1,54 @@
-# This Dockerfile prepares a backend Node.js application for production use.
-# It sets up the environment, installs necessary packages, prepares the database client,
-# builds the application code, and creates a small final image for running the backend.
+FROM node:20-alpine AS builder
 
-# The application is expected to run on port 3001 and should start in production mode.
+WORKDIR /app
 
-# After setup, the database should be initialized before the backend is started.
-# This process creates the required tables and seeds the database with initial data.
+# Copy package files
+COPY package*.json ./
+COPY prisma ./prisma/
 
-# A multi-stage build is used:
-# - The first stage handles setup, dependency installation, and application build.
-# - The second stage copies only the essential output into a clean base image.
+# Install ALL dependencies (including dev dependencies for build)
+RUN npm install
 
-# The result is a lightweight production image containing only what’s needed to run the app.
+# Copy source code
+COPY . .
 
+# Generate Prisma client
+RUN npx prisma generate
 
-# ----------------------------------------------------
-# Required commands (to be used in the Dockerfile):
-#
-# npm install
-# npx prisma generate
-# npm run build
-# npm start
-# npm run init-db
-#
-# ----------------------------------------------------
+# Note: Backend runs with ts-node, no build step needed
+# But we prepare everything for production
+
+# Stage 2: Production stage
+FROM node:20-alpine AS production
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install ONLY production dependencies
+RUN npm ci --only=production
+
+# Copy Prisma schema and generated client from builder
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+
+# Copy source code
+COPY src ./src
+COPY tsconfig.json ./
+
+# Install ts-node globally for production (since backend runs TypeScript directly)
+RUN npm install -g ts-node typescript
+
+# Expose port
+EXPOSE 3001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
+  CMD node -e "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+# Start command
+# Note: Database initialization (migrations + seed) should be done via init container
+# This container only runs the server
+CMD ["npx", "ts-node", "src/server.ts"]
