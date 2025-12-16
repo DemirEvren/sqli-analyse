@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: argocd
+
+resources:
+  # ArgoCD namespace
+  - namespace.yaml
+  
+  # Gateway API CRDs (moet eerst!)
+  - https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.0/standard-install.yaml
+  
+  # Istio components (in order!)
+  - istio-operator.yaml
+  
+  # ArgoCD installation
+  - install.yaml

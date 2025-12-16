@@ -14,9 +14,6 @@ resources:
 - app/frontend-deploy.yaml
 - app/frontend-svc.yaml
 
-# Networking
-- net/httproute.yaml
-
 labels:
 - pairs:
     app.kubernetes.io/name: shelfware
