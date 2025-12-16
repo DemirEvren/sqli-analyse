@@ -22,3 +22,4 @@ test-results/
 scripts/deploy-loadtest.sh
 scripts/deploy-shelfware.sh
 INFRA/kustomize/shelfware/base/db/postgres-secret.yaml
+INFRA/argocd/github-repo-secret.yaml
