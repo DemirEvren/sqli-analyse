@@ -14,7 +14,7 @@ spec:
     spec:
       initContainers:
       - name: db-migration
-        image: ghcr.io/pxl-systems-expert/shelfware-backend:latest
+        image: ghcr.io/demirevren/shelfware-backend:latest
         command:
         - sh
         - -c
