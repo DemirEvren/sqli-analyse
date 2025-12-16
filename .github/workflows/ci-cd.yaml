@@ -1,0 +1,114 @@
+name: Build and Deploy Shelfware
+
+on:
+  push:
+    tags:
+      - 'TEST*'
+      - 'PROD*'
+
+env:
+  REGISTRY: ghcr.io
+  GHCR_ORG: demirevren
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    
+    strategy:
+      matrix:
+        service: [backend, frontend]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract tag name
+      id: tag
+      run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+    - name: Set context path
+      id: context
+      run: |
+        if [ "${{ matrix.service }}" = "backend" ]; then
+          echo "path=./shelfware/backend" >> $GITHUB_OUTPUT
+        elif [ "${{ matrix.service }}" = "frontend" ]; then
+          echo "path=./shelfware/frontend" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ${{ steps.context.outputs.path }}
+        file: ${{ steps.context.outputs.path }}/Dockerfile
+        push: true
+        tags: |
+          ${{ env.REGISTRY }}/${{ env.GHCR_ORG }}/shelfware-${{ matrix.service }}:${{ steps.tag.outputs.TAG }}
+          ${{ env.REGISTRY }}/${{ env.GHCR_ORG }}/shelfware-${{ matrix.service }}:latest
+
+  update-manifests:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        ref: main
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Setup Kustomize
+      uses: imranismail/setup-kustomize@v2
+    
+    - name: Extract tag name and environment
+      id: tag
+      run: |
+        TAG=${GITHUB_REF#refs/tags/}
+        echo "TAG=$TAG" >> $GITHUB_OUTPUT
+        
+        if [[ $TAG == TEST* ]]; then
+          echo "ENV=test" >> $GITHUB_OUTPUT
+        elif [[ $TAG == PROD* ]]; then
+          echo "ENV=prod" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Update Kustomization image tags
+      run: |
+        cd INFRA/kustomize/shelfware/overlays/${{ steps.tag.outputs.ENV }}
+        
+        kustomize edit set image \
+          ghcr.io/pxl-systems-expert/shelfware-backend=${{ env.REGISTRY }}/${{ env.GHCR_ORG }}/shelfware-backend:${{ steps.tag.outputs.TAG }} \
+          ghcr.io/pxl-systems-expert/shelfware-frontend=${{ env.REGISTRY }}/${{ env.GHCR_ORG }}/shelfware-frontend:${{ steps.tag.outputs.TAG }}
+    
+    - name: Commit and push changes
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+        git add INFRA/kustomize/shelfware/overlays/${{ steps.tag.outputs.ENV }}/kustomization.yaml
+        git commit -m "chore: Update ${{ steps.tag.outputs.ENV }} images to ${{ steps.tag.outputs.TAG }}" || exit 0
+        git push origin main
+    
+    - name: Deployment Summary
+      run: |
+        echo "### 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Environment:** ${{ steps.tag.outputs.ENV }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Tag:** ${{ steps.tag.outputs.TAG }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Images built:**" >> $GITHUB_STEP_SUMMARY
+        echo "- Backend: ${{ env.REGISTRY }}/${{ env.GHCR_ORG }}/shelfware-backend:${{ steps.tag.outputs.TAG }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Frontend: ${{ env.REGISTRY }}/${{ env.GHCR_ORG }}/shelfware-frontend:${{ steps.tag.outputs.TAG }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "ArgoCD will sync changes to **${{ steps.tag.outputs.ENV }}-shelfware** namespace." >> $GITHUB_STEP_SUMMARY

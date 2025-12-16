@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: ghcr.io/pxl-systems-expert/shelfware-frontend:latest
+        image: ghcr.io/demirevren/shelfware-frontend:latest
         ports:
         - containerPort: 80
           name: http
