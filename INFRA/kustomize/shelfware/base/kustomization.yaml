@@ -5,7 +5,7 @@ resources:
 # Database
 - db/postgres-statefulset.yaml
 - db/postgres-svc.yaml
-- db/postgres-secret.yaml
+# - db/postgres-secret.yaml
 
 # Application
 - app/backend-deploy.yaml

@@ -12,4 +12,4 @@ resources:
 
   # ArgoCD installation
   - install.yaml
-  - github-repo-secret.yaml
+
