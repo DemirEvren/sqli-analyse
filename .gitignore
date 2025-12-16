@@ -18,7 +18,7 @@
 test-results/
 
 #istio
-**/istio-*
+**/istio-1*
 scripts/deploy-loadtest.sh
 scripts/deploy-shelfware.sh
 INFRA/kustomize/shelfware/base/db/postgres-secret.yaml
