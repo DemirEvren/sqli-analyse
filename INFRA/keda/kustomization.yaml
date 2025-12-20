@@ -3,19 +3,10 @@ kind: Kustomization
 
 namespace: keda
 
-# Install KEDA via Helm
+# Install KEDA via Helm with minimal config
 helmCharts:
   - name: keda
     repo: https://kedacore.github.io/charts
     version: 2.15.0
     releaseName: keda
     namespace: keda
-    valuesInline:
-      replicaCount: 1
-      serviceAccount:
-        create: true
-        name: keda-operator
-      rbac:
-        create: true
-      podSecurityPolicy:
-        create: false
