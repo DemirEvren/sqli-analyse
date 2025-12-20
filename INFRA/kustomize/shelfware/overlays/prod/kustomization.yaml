@@ -10,13 +10,20 @@ resources:
 - ingress.yaml
 
 patches:
-- target:
-    kind: ConfigMap
-    name: backend-config
-  patch: |-
+- patch: |-
     - op: replace
       path: /data/CORS_ORIGIN
       value: "http://shelfware.local"
+  target:
+    kind: ConfigMap
+    name: backend-config
 labels:
 - pairs:
     environment: prod
+images:
+- name: ghcr.io/pxl-systems-expert/shelfware-backend
+  newName: ghcr.io/demirevren/shelfware-backend
+  newTag: PRODv1.0
+- name: ghcr.io/pxl-systems-expert/shelfware-frontend
+  newName: ghcr.io/demirevren/shelfware-frontend
+  newTag: PRODv1.0
