@@ -1,9 +1,9 @@
 // frontend/src/services/authService.ts
 import axios from 'axios';
 
-// frontend/src/services/authService.ts
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-const AUTH_URL = `${API_URL}/auth`;  // This should be just /auth, not /projects/auth
+// Use relative path for API - will be proxied through nginx
+const API_URL = '/api';
+const AUTH_URL = `${API_URL}/auth`;
 
 // Types for authentication
 export interface LoginCredentials {
