@@ -3,10 +3,5 @@ kind: Kustomization
 
 namespace: keda
 
-# Install KEDA via Helm with minimal config
-helmCharts:
-  - name: keda
-    repo: https://kedacore.github.io/charts
-    version: 2.15.0
-    releaseName: keda
-    namespace: keda
+resources:
+  - keda-install.yaml
