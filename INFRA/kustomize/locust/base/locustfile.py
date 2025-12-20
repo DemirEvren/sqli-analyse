@@ -1,11 +1,11 @@
 import os
 from locust import HttpUser, task, between
 
-# We sturen requests naar de ingress-nginx-controller Service (binnen de cluster).
+# We sturen requests naar de app cluster's ingress via the shared Docker network.
 # Routing naar prod/test gebeurt via Host header.
 BASE_URL = os.getenv(
     "BASE_URL",
-    "http://ingress-nginx-controller.ingress-nginx.svc.cluster.local"
+    "http://k3d-shelfware-app-serverlb"
 )
 
 TARGET_ENV = os.getenv("TARGET_ENV", "prod").lower()  # "prod" of "test"

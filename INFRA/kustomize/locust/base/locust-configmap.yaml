@@ -9,7 +9,7 @@ data:
 
     BASE_URL = os.getenv(
         "BASE_URL",
-        "http://ingress-nginx-controller.ingress-nginx.svc.cluster.local"
+        "http://k3d-shelfware-app-serverlb"
     )
 
     TARGET_ENV = os.getenv("TARGET_ENV", "prod").lower()
