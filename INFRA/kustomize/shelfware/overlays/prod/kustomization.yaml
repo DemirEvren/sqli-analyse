@@ -26,4 +26,8 @@ images:
   newTag: PRODv1.0
 - name: ghcr.io/pxl-systems-expert/shelfware-frontend
   newName: ghcr.io/demirevren/shelfware-frontend
+<<<<<<< HEAD
   newTag: PRODv1.0
+=======
+  newTag: PRODv1.0
+>>>>>>> e48ac2d (Add image tags for PRODv1.0)
