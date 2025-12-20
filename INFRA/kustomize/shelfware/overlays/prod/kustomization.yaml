@@ -6,7 +6,6 @@ namespace: prod-shelfware
 resources:
 - ../../base
 - namespace.yaml
-- hpa.yaml
 - ingress.yaml
 - keda-scaledobject.yaml
 

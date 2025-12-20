@@ -1,31 +1,10 @@
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: frontend-scaler-test
-  namespace: test-shelfware
-spec:
-  scaleTargetRef:
-    name: frontend
-    kind: Deployment
-  minReplicaCount: 1
-  maxReplicaCount: 3
-  triggers:
-  - type: prometheus
-    metadata:
-      serverAddress: http://monitoring-stack-kube-prom-prometheus.monitoring.svc.cluster.local:9090
-      metricName: http_requests_per_second
-      query: sum(rate(http_requests_total{namespace="test-shelfware"}[1m])) / count(kube_pod_info{namespace="test-shelfware",pod=~"frontend-.*"})
-      threshold: "10"
----
-apiVersion: keda.sh/v1alpha1
-kind: ScaledObject
-metadata:
   name: frontend-scaler-prod
-  namespace: prod-shelfware
 spec:
   scaleTargetRef:
     name: frontend
-    kind: Deployment
   minReplicaCount: 1
   maxReplicaCount: 3
   triggers:
@@ -33,5 +12,5 @@ spec:
     metadata:
       serverAddress: http://monitoring-stack-kube-prom-prometheus.monitoring.svc.cluster.local:9090
       metricName: http_requests_per_second
-      query: sum(rate(http_requests_total{namespace="prod-shelfware"}[1m])) / count(kube_pod_info{namespace="prod-shelfware",pod=~"frontend-.*"})
+      query: sum(rate(http_requests_total{namespace="prod-shelfware"}[2m])) / count(kube_pod_info{namespace="prod-shelfware",pod=~"frontend-.*"})
       threshold: "10"
