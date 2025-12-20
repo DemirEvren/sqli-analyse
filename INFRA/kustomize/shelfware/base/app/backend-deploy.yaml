@@ -15,6 +15,7 @@ spec:
       initContainers:
       - name: db-migration
         image: ghcr.io/demirevren/shelfware-backend:latest
+        imagePullPolicy: Always
         command:
         - sh
         - -c
@@ -32,6 +33,7 @@ spec:
       containers:
       - name: backend
         image: ghcr.io/demirevren/shelfware-backend:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 3001
           name: http
