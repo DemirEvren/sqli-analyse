@@ -18,6 +18,9 @@ spec:
         ports:
         - containerPort: 80
           name: http
+        env:
+        - name: VITE_API_URL
+          value: "/api"
         resources:
           requests:
             cpu: 50m
