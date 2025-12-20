@@ -4,6 +4,7 @@ kind: Kustomization
 namespace: locust
 
 resources:
+  - namespace.yaml
   - ../../base
 
 patches:
@@ -16,12 +17,12 @@ patches:
       - op: add
         path: /spec/template/spec/containers/0/env
         value:
-        - name: BASE_URL
-          value: "http://k3d-shelfware-app-serverlb"
-        - name: TARGET_ENV
-          value: "prod"
-        - name: HOST_HEADER
-          value: "shelfware.local"
+          - name: BASE_URL
+            value: "http://k3d-shelfware-app-serverlb"
+          - name: TARGET_ENV
+            value: "prod"
+          - name: HOST_HEADER
+            value: "shelfware.local"
   - target:
       group: apps
       version: v1
@@ -31,9 +32,9 @@ patches:
       - op: add
         path: /spec/template/spec/containers/0/env
         value:
-        - name: BASE_URL
-          value: "http://k3d-shelfware-app-serverlb"
-        - name: TARGET_ENV
-          value: "prod"
-        - name: HOST_HEADER
-          value: "shelfware.local"
+          - name: BASE_URL
+            value: "http://k3d-shelfware-app-serverlb"
+          - name: TARGET_ENV
+            value: "prod"
+          - name: HOST_HEADER
+            value: "shelfware.local"
