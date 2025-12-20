@@ -7,7 +7,7 @@ resources:
 - ../../base
 - namespace.yaml
 - hpa.yaml
-- httproute.yaml
+- ingress.yaml
 
 patches:
 - target:
@@ -17,14 +17,6 @@ patches:
     - op: replace
       path: /data/CORS_ORIGIN
       value: "http://shelfware.local"
-
-- target:
-    kind: HTTPRoute
-    name: httproute
-  patch: |-
-    - op: replace
-      path: /spec/hostnames/0
-      value: "shelfware.local"
 labels:
 - pairs:
     environment: prod

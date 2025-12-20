@@ -6,9 +6,6 @@ namespace: argocd
 resources:
   # ArgoCD namespace
   - namespace.yaml
-  
-  # Gateway API CRDs (moet eerst!)
-  - gateway-api-crds.yaml
 
   # ArgoCD installation
   - install.yaml

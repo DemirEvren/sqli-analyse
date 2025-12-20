@@ -6,7 +6,7 @@ namespace: test-shelfware
 resources:
 - ../../base
 - namespace.yaml
-- httproute.yaml
+- ingress.yaml
 
 patches:
 - target:
@@ -16,14 +16,6 @@ patches:
     - op: replace
       path: /data/CORS_ORIGIN
       value: "http://test.shelfware.local"
-
-- target:
-    kind: HTTPRoute
-    name: httproute
-  patch: |-
-    - op: replace
-      path: /spec/hostnames/0
-      value: "test.shelfware.local"
 
 labels:
 - pairs:
