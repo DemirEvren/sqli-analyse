@@ -37,6 +37,8 @@ spec:
         ports:
         - containerPort: 3001
           name: http
+        - containerPort: 9090
+          name: metrics
         env:
         - name: DATABASE_URL
           valueFrom:
@@ -77,3 +79,15 @@ spec:
             port: 3001
           initialDelaySeconds: 10
           periodSeconds: 5
+      - name: prometheus-exporter
+        image: prom/node-exporter:latest
+        ports:
+        - containerPort: 9100
+          name: metrics-exporter
+        resources:
+          requests:
+            cpu: 50m
+            memory: 32Mi
+          limits:
+            cpu: 100m
+            memory: 64Mi
