@@ -68,26 +68,7 @@ metadata:
     heritage: "Helm"
 automountServiceAccountToken: true
 ---
-# Source: kube-prometheus-stack/templates/prometheus-operator/serviceaccount.yaml
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: monitoring-stack-kube-prom-operator
-  namespace: monitoring
-  labels:
-    
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/instance: monitoring-stack
-    app.kubernetes.io/version: "61.3.1"
-    app.kubernetes.io/part-of: kube-prometheus-stack
-    chart: kube-prometheus-stack-61.3.1
-    release: "monitoring-stack"
-    heritage: "Helm"
-    app: kube-prometheus-stack-operator
-    app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
-    app.kubernetes.io/component: prometheus-operator
-automountServiceAccountToken: true
----
+
 # Source: kube-prometheus-stack/templates/prometheus/serviceaccount.yaml
 apiVersion: v1
 kind: ServiceAccount
@@ -1056,115 +1037,7 @@ rules:
     - volumeattachments
   verbs: ["list", "watch"]
 ---
-# Source: kube-prometheus-stack/templates/prometheus-operator/clusterrole.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: monitoring-stack-kube-prom-operator
-  labels:
-    
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/instance: monitoring-stack
-    app.kubernetes.io/version: "61.3.1"
-    app.kubernetes.io/part-of: kube-prometheus-stack
-    chart: kube-prometheus-stack-61.3.1
-    release: "monitoring-stack"
-    heritage: "Helm"
-    app: kube-prometheus-stack-operator
-    app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
-    app.kubernetes.io/component: prometheus-operator
-rules:
-- apiGroups:
-  - monitoring.coreos.com
-  resources:
-  - alertmanagers
-  - alertmanagers/finalizers
-  - alertmanagers/status
-  - alertmanagerconfigs
-  - prometheuses
-  - prometheuses/finalizers
-  - prometheuses/status
-  - prometheusagents
-  - prometheusagents/finalizers
-  - prometheusagents/status
-  - thanosrulers
-  - thanosrulers/finalizers
-  - thanosrulers/status
-  - scrapeconfigs
-  - servicemonitors
-  - podmonitors
-  - probes
-  - prometheusrules
-  verbs:
-  - '*'
-- apiGroups:
-  - apps
-  resources:
-  - statefulsets
-  verbs:
-  - '*'
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  - secrets
-  verbs:
-  - '*'
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - list
-  - delete
-- apiGroups:
-  - ""
-  resources:
-  - services
-  - services/finalizers
-  - endpoints
-  verbs:
-  - get
-  - create
-  - update
-  - delete
-- apiGroups:
-  - ""
-  resources:
-  - nodes
-  verbs:
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - namespaces
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - events
-  verbs:
-  - patch
-  - create
-- apiGroups:
-  - networking.k8s.io
-  resources:
-  - ingresses
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - storage.k8s.io
-  resources:
-  - storageclasses
-  verbs:
-  - get
----
+
 # Source: kube-prometheus-stack/templates/prometheus/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -1242,32 +1115,7 @@ subjects:
   name: monitoring-stack-kube-state-metrics
   namespace: monitoring
 ---
-# Source: kube-prometheus-stack/templates/prometheus-operator/clusterrolebinding.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: monitoring-stack-kube-prom-operator
-  labels:
-    
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/instance: monitoring-stack
-    app.kubernetes.io/version: "61.3.1"
-    app.kubernetes.io/part-of: kube-prometheus-stack
-    chart: kube-prometheus-stack-61.3.1
-    release: "monitoring-stack"
-    heritage: "Helm"
-    app: kube-prometheus-stack-operator
-    app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
-    app.kubernetes.io/component: prometheus-operator
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: monitoring-stack-kube-prom-operator
-subjects:
-- kind: ServiceAccount
-  name: monitoring-stack-kube-prom-operator
-  namespace: monitoring
----
+
 # Source: kube-prometheus-stack/templates/prometheus/clusterrolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -1580,34 +1428,7 @@ spec:
     component: kube-scheduler
   type: ClusterIP
 ---
-# Source: kube-prometheus-stack/templates/prometheus-operator/service.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: monitoring-stack-kube-prom-operator
-  namespace: monitoring
-  labels:
-    
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/instance: monitoring-stack
-    app.kubernetes.io/version: "61.3.1"
-    app.kubernetes.io/part-of: kube-prometheus-stack
-    chart: kube-prometheus-stack-61.3.1
-    release: "monitoring-stack"
-    heritage: "Helm"
-    app: kube-prometheus-stack-operator
-    app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
-    app.kubernetes.io/component: prometheus-operator
-spec:
-  ports:
-  - name: https
-    port: 443
-    targetPort: https
-  selector:
-    app: kube-prometheus-stack-operator
-    release: "monitoring-stack"
-  type: "ClusterIP"
----
+
 # Source: kube-prometheus-stack/templates/prometheus/service.yaml
 apiVersion: v1
 kind: Service
@@ -2072,98 +1893,7 @@ spec:
             - ALL
           readOnlyRootFilesystem: true
 ---
-# Source: kube-prometheus-stack/templates/prometheus-operator/deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: monitoring-stack-kube-prom-operator
-  namespace: monitoring
-  labels:
-    
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/instance: monitoring-stack
-    app.kubernetes.io/version: "61.3.1"
-    app.kubernetes.io/part-of: kube-prometheus-stack
-    chart: kube-prometheus-stack-61.3.1
-    release: "monitoring-stack"
-    heritage: "Helm"
-    app: kube-prometheus-stack-operator
-    app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
-    app.kubernetes.io/component: prometheus-operator
-spec:
-  replicas: 1
-  revisionHistoryLimit: 10
-  selector:
-    matchLabels:
-      app: kube-prometheus-stack-operator
-      release: "monitoring-stack"
-  template:
-    metadata:
-      labels:
-        
-        app.kubernetes.io/managed-by: Helm
-        app.kubernetes.io/instance: monitoring-stack
-        app.kubernetes.io/version: "61.3.1"
-        app.kubernetes.io/part-of: kube-prometheus-stack
-        chart: kube-prometheus-stack-61.3.1
-        release: "monitoring-stack"
-        heritage: "Helm"
-        app: kube-prometheus-stack-operator
-        app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
-        app.kubernetes.io/component: prometheus-operator
-    spec:
-      containers:
-        - name: kube-prometheus-stack
-          image: "quay.io/prometheus-operator/prometheus-operator:v0.75.1"
-          imagePullPolicy: "IfNotPresent"
-          args:
-            - --kubelet-service=kube-system/monitoring-stack-kube-prom-kubelet
-            - --localhost=127.0.0.1
-            - --prometheus-config-reloader=quay.io/prometheus-operator/prometheus-config-reloader:v0.75.1
-            - --config-reloader-cpu-request=0
-            - --config-reloader-cpu-limit=0
-            - --config-reloader-memory-request=0
-            - --config-reloader-memory-limit=0
-            - --thanos-default-base-image=quay.io/thanos/thanos:v0.35.1
-            - --secret-field-selector=type!=kubernetes.io/dockercfg,type!=kubernetes.io/service-account-token,type!=helm.sh/release.v1
-            - --web.enable-tls=true
-            - --web.cert-file=/cert/cert
-            - --web.key-file=/cert/key
-            - --web.listen-address=:10250
-            - --web.tls-min-version=VersionTLS13
-          ports:
-            - containerPort: 10250
-              name: https
-          env:
-          - name: GOGC
-            value: "30"
-          resources:
-            {}
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-              - ALL
-            readOnlyRootFilesystem: true
-          volumeMounts:
-            - name: tls-secret
-              mountPath: /cert
-              readOnly: true
-      volumes:
-        - name: tls-secret
-          secret:
-            defaultMode: 420
-            secretName: monitoring-stack-kube-prom-admission
-      securityContext:
-        fsGroup: 65534
-        runAsGroup: 65534
-        runAsNonRoot: true
-        runAsUser: 65534
-        seccompProfile:
-          type: RuntimeDefault
-      serviceAccountName: monitoring-stack-kube-prom-operator
-      automountServiceAccountToken: true
----
+
 # Source: kube-prometheus-stack/templates/alertmanager/alertmanager.yaml
 apiVersion: monitoring.coreos.com/v1
 kind: Alertmanager
@@ -2203,45 +1933,6 @@ spec:
     seccompProfile:
       type: RuntimeDefault
   portName: http-web
----
-# Source: kube-prometheus-stack/templates/prometheus-operator/admission-webhooks/mutatingWebhookConfiguration.yaml
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
-metadata:
-  name:  monitoring-stack-kube-prom-admission
-  labels:
-    app: kube-prometheus-stack-admission
-    
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/instance: monitoring-stack
-    app.kubernetes.io/version: "61.3.1"
-    app.kubernetes.io/part-of: kube-prometheus-stack
-    chart: kube-prometheus-stack-61.3.1
-    release: "monitoring-stack"
-    heritage: "Helm"
-    app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
-    app.kubernetes.io/component: prometheus-operator-webhook
-webhooks:
-  - name: prometheusrulemutate.monitoring.coreos.com
-    failurePolicy: Ignore
-    rules:
-      - apiGroups:
-          - monitoring.coreos.com
-        apiVersions:
-          - "*"
-        resources:
-          - prometheusrules
-        operations:
-          - CREATE
-          - UPDATE
-    clientConfig:
-      service:
-        namespace: monitoring
-        name: monitoring-stack-kube-prom-operator
-        path: /admission-prometheusrules/mutate
-    timeoutSeconds: 10
-    admissionReviewVersions: ["v1", "v1beta1"]
-    sideEffects: None
 ---
 # Source: kube-prometheus-stack/templates/prometheus/prometheus.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -6009,45 +5700,7 @@ spec:
   - port: reloader-web
     path: "/metrics"
 ---
-# Source: kube-prometheus-stack/templates/prometheus-operator/admission-webhooks/validatingWebhookConfiguration.yaml
-apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingWebhookConfiguration
-metadata:
-  name:  monitoring-stack-kube-prom-admission
-  labels:
-    app: kube-prometheus-stack-admission
-    
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/instance: monitoring-stack
-    app.kubernetes.io/version: "61.3.1"
-    app.kubernetes.io/part-of: kube-prometheus-stack
-    chart: kube-prometheus-stack-61.3.1
-    release: "monitoring-stack"
-    heritage: "Helm"
-    app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
-    app.kubernetes.io/component: prometheus-operator-webhook
-webhooks:
-  - name: prometheusrulemutate.monitoring.coreos.com
-    failurePolicy: Ignore
-    rules:
-      - apiGroups:
-          - monitoring.coreos.com
-        apiVersions:
-          - "*"
-        resources:
-          - prometheusrules
-        operations:
-          - CREATE
-          - UPDATE
-    clientConfig:
-      service:
-        namespace: monitoring
-        name: monitoring-stack-kube-prom-operator
-        path: /admission-prometheusrules/validate
-    timeoutSeconds: 10
-    admissionReviewVersions: ["v1", "v1beta1"]
-    sideEffects: None
----
+
 # Source: kube-prometheus-stack/charts/grafana/templates/tests/test-serviceaccount.yaml
 apiVersion: v1
 kind: ServiceAccount
