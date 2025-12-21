@@ -20,6 +20,11 @@ grafana:
   persistence:
     enabled: true
     size: 5Gi
+  # Disable built-in datasources
+  sidecar:
+    datasources:
+      enabled: true
+      defaultDatasourceEnabled: false
   datasources:
     datasources.yaml:
       apiVersion: 1
@@ -29,6 +34,9 @@ grafana:
           url: http://monitoring-stack-kube-prom-prometheus:9090
           access: proxy
           isDefault: true
+          jsonData:
+            httpMethod: POST
+            timeInterval: 30s
 
 # AlertManager configuration
 alertmanager:

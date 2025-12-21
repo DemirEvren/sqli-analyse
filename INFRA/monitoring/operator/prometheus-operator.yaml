@@ -152,7 +152,8 @@ metadata:
 apiVersion: v1
 data:
   datasources.yaml: "apiVersion: 1\ndatasources:\n- access: proxy\n  isDefault: true\n\
-    \  name: Prometheus\n  type: prometheus\n  url: http://monitoring-stack-kube-prom-prometheus:9090\n"
+    \  jsonData:\n    httpMethod: POST\n    timeInterval: 30s\n  name: Prometheus\n\
+    \  type: prometheus\n  url: http://monitoring-stack-kube-prom-prometheus:9090\n"
   grafana.ini: '[analytics]
 
     check_for_updates = true
@@ -193,13 +194,9 @@ metadata:
 ---
 apiVersion: v1
 data:
-  datasource.yaml: "apiVersion: 1\ndatasources:\n- name: \"Prometheus\"\n  type: prometheus\n\
-    \  uid: prometheus\n  url: http://monitoring-stack-kube-prom-prometheus.monitoring:9090/\n\
-    \  access: proxy\n  isDefault: true\n  jsonData:\n    httpMethod: POST\n    timeInterval:\
-    \ 30s\n- name: \"Alertmanager\"\n  type: alertmanager\n  uid: alertmanager\n \
-    \ url: http://monitoring-stack-kube-prom-alertmanager.monitoring:9093/\n  access:\
-    \ proxy\n  jsonData:\n    handleGrafanaManagedAlerts: false\n    implementation:\
-    \ prometheus"
+  datasource.yaml: 'apiVersion: 1
+
+    datasources:'
 kind: ConfigMap
 metadata:
   labels:
@@ -3634,7 +3631,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 3cb732d758cacacad51da09067d62f7d550b2b6b0519cedf8ad03b8bdf32c095
+        checksum/config: 7423265cdb7bc85507cc440fa13131cca2ee28715917bc17cd0abfd84e74317d
         checksum/sc-dashboard-provider-config: e70bf6a851099d385178a76de9757bb0bef8299da6d8443602590e44f05fdf24
         checksum/secret: bed677784356b2af7fb0d87455db21f077853059b594101a4f6532bfbd962a7f
         kubectl.kubernetes.io/default-container: grafana
