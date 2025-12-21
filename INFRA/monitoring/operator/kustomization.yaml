@@ -13,3 +13,62 @@ resources:
   - crd_scrapeconfig.yaml
   - crd_thanos.yaml
   - prometheus-operator.yaml
+
+# Add sync-wave annotations to each CRD file
+patches:
+  - target:
+      kind: CustomResourceDefinition
+      name: alertmanagers.monitoring.coreos.com
+    patch: |-
+      - op: add
+        path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+        value: "-10"
+  - target:
+      kind: CustomResourceDefinition
+      name: prometheuses.monitoring.coreos.com
+    patch: |-
+      - op: add
+        path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+        value: "-10"
+  - target:
+      kind: CustomResourceDefinition
+      name: scrapeconfigs.monitoring.coreos.com
+    patch: |-
+      - op: add
+        path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+        value: "-10"
+  - target:
+      kind: CustomResourceDefinition
+      name: thanosrulers.monitoring.coreos.com
+    patch: |-
+      - op: add
+        path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+        value: "-10"
+  - target:
+      kind: CustomResourceDefinition
+      name: podmonitors.monitoring.coreos.com
+    patch: |-
+      - op: add
+        path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+        value: "-10"
+  - target:
+      kind: CustomResourceDefinition
+      name: probes.monitoring.coreos.com
+    patch: |-
+      - op: add
+        path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+        value: "-10"
+  - target:
+      kind: CustomResourceDefinition
+      name: prometheusrules.monitoring.coreos.com
+    patch: |-
+      - op: add
+        path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+        value: "-10"
+  - target:
+      kind: CustomResourceDefinition
+      name: servicemonitors.monitoring.coreos.com
+    patch: |-
+      - op: add
+        path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+        value: "-10"
