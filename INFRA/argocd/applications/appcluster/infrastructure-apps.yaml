@@ -39,6 +39,9 @@ spec:
     repoURL: https://github.com/PXL-Systems-Expert/2526-ex-DemirEvren.git
     targetRevision: main
     path: INFRA/monitoring/kustomize
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
   syncPolicy:
     automated:
       prune: true
