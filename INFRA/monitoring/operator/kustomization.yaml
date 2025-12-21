@@ -4,4 +4,12 @@ kind: Kustomization
 namespace: monitoring
 
 resources:
+  - crd_alertmanager.yaml
+  - crd_prometheus.yaml
+  - crd_prometheusrule.yaml
+  - crd_servicemonitor.yaml
+  - crd_podmonitor.yaml
+  - crd_probe.yaml
+  - crd_scrapeconfig.yaml
+  - crd_thanos.yaml
   - prometheus-operator.yaml
