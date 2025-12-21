@@ -1,44 +1,46 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: shelfware-backend
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: shelfware-backend
+  endpoints:
+    - port: metrics
+      interval: 30s
+
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: shelfware-backend-monitor
+  name: shelfware-backend-test
   namespace: monitoring
-  labels:
-    release: monitoring-stack
 spec:
-  selector:
-    matchLabels:
-      app: backend
   namespaceSelector:
     matchNames:
       - test-shelfware
-      - prod-shelfware
+  selector:
+    matchLabels:
+      app: shelfware-backend
   endpoints:
     - port: metrics
-      path: /metrics
       interval: 30s
-      scrapeTimeout: 10s
 
 ---
-# ServiceMonitor for Prometheus targets in both namespaces
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: kube-metrics
+  name: shelfware-backend-prod
   namespace: monitoring
-  labels:
-    release: monitoring-stack
 spec:
   namespaceSelector:
     matchNames:
-      - kube-system
-      - monitoring
+      - prod-shelfware
   selector:
     matchLabels:
-      k8s-app: metrics-server
+      app: shelfware-backend
   endpoints:
-    - port: https
-      scheme: https
-      tlsConfig:
-        insecureSkipVerify: true
+    - port: metrics
+      interval: 30s
