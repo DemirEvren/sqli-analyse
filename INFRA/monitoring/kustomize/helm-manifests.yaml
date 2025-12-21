@@ -96,7 +96,7 @@ spec:
   enableOTLPReceiver: false
   externalUrl: http://monitoring-stack-kube-prom-prometheus.monitoring:9090
   hostNetwork: false
-  image: quay.io/prometheus/prometheus:v3.8.1
+  image: quay.io/prometheus/prometheus:v2.54.1
   imagePullPolicy: IfNotPresent
   listenLocal: false
   logFormat: logfmt
@@ -141,7 +141,7 @@ spec:
             storage: 20Gi
   tsdb:
     outOfOrderTimeWindow: 0s
-  version: v3.8.1
+  version: v2.54.1
   walCompression: true
 ---
 apiVersion: monitoring.coreos.com/v1
