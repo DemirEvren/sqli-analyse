@@ -11,6 +11,7 @@ resources:
 - app/backend-deploy.yaml
 - app/backend-svc.yaml
 - app/backend-configmap.yaml
+- app/backend-servicemonitor.yaml
 - app/frontend-deploy.yaml
 - app/frontend-svc.yaml
 
