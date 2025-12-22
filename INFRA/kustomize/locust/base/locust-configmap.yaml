@@ -9,7 +9,7 @@ data:
 
     BASE_URL = os.getenv(
         "BASE_URL",
-        "http://k3d-shelfware-app-serverlb"
+        "http://172.18.0.5"
     )
 
     TARGET_ENV = os.getenv("TARGET_ENV", "prod").lower()
@@ -25,8 +25,17 @@ data:
 
         @task(10)
         def root(self):
-            self.client.get("/", name="GET /")
+            with self.client.get("/", name="GET /", catch_response=True) as response:
+                # Frontend returns HTML (200), which is success
+                if response.status_code == 200:
+                    response.success()
+                else:
+                    response.failure(f"Unexpected status: {response.status_code}")
+
+        @task(5)
+        def get_projects(self):
+            self.client.get("/api/projects", name="GET /api/projects")
 
         @task(2)
         def health(self):
-            self.client.get("/health", name="GET /health", allow_redirects=False)
+            self.client.get("/health", name="GET /health")

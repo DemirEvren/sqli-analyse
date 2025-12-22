@@ -18,7 +18,7 @@ patches:
         path: /spec/template/spec/containers/0/env
         value:
           - name: BASE_URL
-            value: "http://k3d-shelfware-app-serverlb"
+            value: "http://172.18.0.5"
           - name: TARGET_ENV
             value: "prod"
           - name: HOST_HEADER
@@ -33,7 +33,7 @@ patches:
         path: /spec/template/spec/containers/0/env
         value:
           - name: BASE_URL
-            value: "http://k3d-shelfware-app-serverlb"
+            value: "http://172.18.0.5"
           - name: TARGET_ENV
             value: "prod"
           - name: HOST_HEADER

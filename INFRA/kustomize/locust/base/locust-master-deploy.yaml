@@ -21,6 +21,13 @@ spec:
           - "-f"
           - "/mnt/locust/locustfile.py"
           - "--master"
+        env:
+          - name: BASE_URL
+            value: "http://172.18.0.5"
+          - name: TARGET_ENV
+            value: "prod"
+          - name: HOST_HEADER
+            value: "shelfware.local"
         ports:
           - containerPort: 8089
           - containerPort: 5557
