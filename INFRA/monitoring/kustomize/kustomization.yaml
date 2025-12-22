@@ -8,6 +8,7 @@ resources:
   - servicemonitor.yaml
   - grafana-dashboard.yaml
 
-# Disable default namespace annotation to avoid conflict
-commonLabels:
-  app.kubernetes.io/managed-by: argocd
+labels:
+  - includeSelectors: true
+    pairs:
+      app.kubernetes.io/managed-by: argocd
