@@ -14,7 +14,7 @@ data:
             "builtIn": 1,
             "datasource": {
               "type": "prometheus",
-              "uid": "prometheus"
+              "uid": ""
             },
             "enable": true,
             "hide": true,
@@ -31,7 +31,7 @@ data:
       "links": [],
       "panels": [
         {
-          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "datasource": {"type": "prometheus", "uid": ""},
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -119,7 +119,7 @@ data:
           "type": "timeseries"
         },
         {
-          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "datasource": {"type": "prometheus", "uid": ""},
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -196,7 +196,7 @@ data:
           "type": "timeseries"
         },
         {
-          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "datasource": {"type": "prometheus", "uid": ""},
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -279,7 +279,7 @@ data:
           "type": "timeseries"
         },
         {
-          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "datasource": {"type": "prometheus", "uid": ""},
           "fieldConfig": {
             "defaults": {
               "color": {
