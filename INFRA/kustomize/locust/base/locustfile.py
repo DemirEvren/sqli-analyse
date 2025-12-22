@@ -5,7 +5,7 @@ from locust import HttpUser, task, between
 # Routing naar prod/test gebeurt via Host header.
 BASE_URL = os.getenv(
     "BASE_URL",
-    "http://k3d-shelfware-app-serverlb"
+    "http://172.18.0.5"
 )
 
 TARGET_ENV = os.getenv("TARGET_ENV", "prod").lower()  # "prod" of "test"
@@ -34,6 +34,10 @@ class ShelfwareUser(HttpUser):
     def root(self):
         # Dit werkt sowieso met je echo setup
         self.client.get("/", name="GET /")
+
+    @task(5)
+    def get_projects(self):
+        self.client.get("/api/projects", name="GET /api/projects")
 
     @task(2)
     def health(self):
