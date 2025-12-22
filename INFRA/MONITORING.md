@@ -173,19 +173,52 @@ To show KEDA in action for your presentation:
 
 All fixes are committed and pushed to GitHub main branch:
 
-1. **9eb0313**: Remove Alertmanager resources blocking monitoring-stack sync
+1. **b720bfd**: Update locustfile.py: add get_projects task and fix BASE_URL to ingress IP
+   - Problem: Locust was only testing 2 endpoints (root, health), missing backend API endpoint
+   - Solution: Added `/api/projects` task with weight 5 for realistic backend load distribution
+   - Also fixed BASE_URL from loadbalancer (172.18.0.7) to ingress IP (172.18.0.5) for metric capture
+
+2. **b7894c5**: Fix Locust configmap: add get_projects task and update BASE_URL to ingress IP
+   - Updated configmap YAML with correct Python code and environment variables
+   - Updated overlay kustomization.yaml with BASE_URL patch
+
+3. **9eb0313**: Remove Alertmanager resources blocking monitoring-stack sync
    - Problem: Alertmanager CRD not installed, broke Prometheus operator
    - Solution: Removed all Alertmanager references from helm-manifests.yaml
 
-2. **6bdabdc**: Add missing PodMonitor and Probe CRDs to operator
+4. **6bdabdc**: Add missing PodMonitor and Probe CRDs to operator
    - Problem: Operator couldn't reconcile because PodMonitor/Probe CRDs missing
    - Solution: Extracted CRDs from official Helm chart, added to operator kustomization.yaml
 
-3. **20918cd**: Add Backend API Four Golden Signals dashboard JSON
+5. **20918cd**: Add Backend API Four Golden Signals dashboard JSON
    - Adds dashboard JSON file for reference
    - Dashboard already mounted via ConfigMap in grafana-dashboard.yaml
 
 ## Testing the Deployment
+
+### Quick Start: Port Forwarding Script
+
+A convenient script is provided to manage all port forwards at once:
+
+```bash
+# Use the port-forwarding script
+./scripts/port-forwards.sh
+
+# Choose option 1 to deploy all port forwards
+# The script automatically:
+# - Switches to correct Kubernetes contexts
+# - Detects existing port forwards and continues
+# - Runs all services in background
+
+# Access points:
+# - Grafana:     http://localhost:3000
+# - Locust:      http://localhost:8089
+# - Prometheus:  http://localhost:9090
+
+# To close all port forwards:
+# ./scripts/port-forwards.sh
+# Choose option 2
+```
 
 ### Verify All Components Are Running
 
@@ -214,10 +247,14 @@ kubectl get crd | grep monitoring.coreos.com
 ### Access Grafana
 
 ```bash
-# Port forward to Grafana
-kubectl port-forward svc/monitoring-stack-grafana -n monitoring 3000:80
+# Option 1: Use the port-forwarding script (recommended)
+./scripts/port-forwards.sh
+# Then open: http://localhost:3000
 
+# Option 2: Manual port forward
+kubectl port-forward svc/monitoring-stack-grafana -n monitoring 3000:80
 # Open: http://localhost:3000
+
 # Default credentials: admin / prom-operator
 # Navigate to: Dashboards → Four Golden Signals
 ```
@@ -237,6 +274,114 @@ kubectl exec prometheus-monitoring-stack-kube-prom-prometheus-0 -n monitoring --
 # - backend (if Backend exposes /metrics endpoint)
 ```
 
+### Load Testing with Locust
+
+Locust is deployed in the separate loadtest cluster and generates realistic traffic to test the monitoring setup.
+
+**Locust Configuration:**
+- File: `/INFRA/kustomize/locust/base/locustfile.py`
+- Base URL: `http://172.18.0.5` (ingress controller IP for metric capture)
+- Tasks: 3 HTTP endpoints with weighted distribution
+
+**Locust Tasks:**
+1. **root** (weight 10): `GET /` - Frontend HTML response
+2. **get_projects** (weight 5): `GET /api/projects` - Backend API endpoint
+3. **health** (weight 2): `GET /health` - Health check endpoint
+
+**To Run Load Test:**
+
+```bash
+# 1. Port forward Locust UI
+./scripts/port-forwards.sh
+# Choose option 1
+
+# 2. Open Locust: http://localhost:8089
+
+# 3. Configure and start:
+# - Number of users: 10-50 (for visible metrics)
+# - Spawn rate: 1-5 users/sec
+# - Run time: 5-10 minutes
+
+# 4. Monitor in Grafana (http://localhost:3000):
+# - Watch Traffic panel: RPS should increase
+# - Watch Latency panel: Response times visible
+# - Watch Errors panel: Should stay near 0%
+# - Watch Saturation panel: CPU/Memory usage updates
+```
+
+### Key Prometheus Queries for Monitoring
+
+These queries work in both Prometheus UI and Grafana panels:
+
+**1. Request Rate (Requests Per Second)**
+```promql
+sum(rate(http_requests_total[5m]))
+```
+Shows total RPS across all endpoints.
+
+**2. Request Rate by Endpoint**
+```promql
+sum(rate(http_requests_total[5m])) by (path)
+```
+Shows which endpoints are receiving traffic.
+
+**3. Request Rate by Status Code**
+```promql
+sum(rate(http_requests_total[5m])) by (status)
+```
+Shows distribution of responses: 200 (success), 404, 500, etc.
+
+**4. P95 Response Latency**
+```promql
+histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))
+```
+95th percentile response time in seconds (more meaningful than averages).
+
+**5. P99 Response Latency**
+```promql
+histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))
+```
+99th percentile response time (shows tail latencies).
+
+**6. Error Rate (5xx responses as percentage)**
+```promql
+sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) * 100
+```
+Percentage of requests that resulted in server errors.
+
+**7. Total Errors Per Endpoint**
+```promql
+sum(rate(http_requests_total{status=~"5.."}[5m])) by (path)
+```
+Shows which endpoints are failing most frequently.
+
+**8. CPU Usage by Pod**
+```promql
+rate(container_cpu_usage_seconds_total[5m])
+```
+CPU utilization of each container (pod).
+
+**9. Memory Usage by Pod**
+```promql
+container_memory_usage_bytes
+```
+Current memory consumption of each pod.
+
+**10. Memory Usage as % of Limit**
+```promql
+container_memory_usage_bytes / container_spec_memory_limit_bytes * 100
+```
+Memory usage relative to the pod's limit (saturation metric).
+
+**To Use These Queries:**
+1. Open Prometheus: http://localhost:9090
+2. Paste any query into the search box
+3. Click "Execute" or press Enter
+4. View real-time graph and metrics table
+5. Click "Graph" tab to see visualization over time
+
+
+
 ## What Changed From Original Setup
 
 | Aspect | Before | After | Why |
@@ -253,6 +398,84 @@ kubectl exec prometheus-monitoring-stack-kube-prom-prometheus-0 -n monitoring --
 2. **Prometheus is Observable**: Can query Prometheus to debug operator state
 3. **Four Golden Signals Framework**: Latency, Traffic, Errors, Saturation gives complete picture
 4. **KEDA Prevents Cascade**: Scaling on metrics instead of resource usage prevents overload
+5. **DNS Across Clusters**: In multi-cluster setups, use direct IPs instead of DNS names
+6. **ConfigMap in Kustomize**: When using `locustfile.py` file, update the actual file not just the configmap YAML
+7. **Ingress vs LoadBalancer**: For metrics capture, traffic must flow through ingress controller (where Prometheus scrapes)
+
+## Troubleshooting
+
+### Locust Tasks Not Showing in UI
+
+**Problem:** Locust web UI only shows 2 tasks instead of 3 (missing `/api/projects`)
+
+**Root Cause:** ConfigMap was using old version of locustfile.py
+
+**Solution:**
+```bash
+# 1. Update INFRA/kustomize/locust/base/locustfile.py with all 3 tasks
+# 2. Commit and push to GitHub
+# 3. ArgoCD syncs automatically
+# 4. Restart locust pods:
+kubectl delete pods -n locust -l app=locust
+
+# 5. Verify 3 tasks are loaded:
+kubectl exec -n locust deployment/locust-master -- grep -c "@task" /mnt/locust/locustfile.py
+# Should output: 3
+```
+
+### Metrics Not Appearing in Grafana
+
+**Problem:** Grafana dashboards show no data while Locust is running
+
+**Root Cause:** Locust is targeting wrong IP (loadbalancer instead of ingress)
+
+**Solution:**
+```bash
+# 1. Verify Locust is hitting ingress (172.18.0.5), not loadbalancer (172.18.0.7)
+# 2. Check BASE_URL in deployment:
+kubectl get deployment -n locust locust-master -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="BASE_URL")].value}'
+
+# Should output: http://172.18.0.5
+
+# 3. If wrong, update INFRA/kustomize/locust/overlays/loadtest/kustomization.yaml
+# 4. Commit, push, and pods will auto-restart
+```
+
+### Port Forward Script Not Working
+
+**Problem:** `./scripts/port-forwards.sh` shows "Port already in use" for all services
+
+**Solution:**
+```bash
+# Kill all existing port forwards
+pkill -f "kubectl.*port-forward"
+
+# Then run script again
+./scripts/port-forwards.sh
+# Choose option 1
+```
+
+### Prometheus Targets Showing DOWN
+
+**Problem:** Some targets in Prometheus UI show as DOWN instead of UP
+
+**Solution:**
+```bash
+# 1. Check target details in Prometheus UI
+# Go to: http://localhost:9090/targets
+
+# 2. Click on DOWN target to see error
+# Common causes:
+# - Service doesn't exist (typo in job config)
+# - Service port wrong (usually port name is "metrics", not actual number)
+# - ServiceMonitor selector doesn't match service labels
+
+# 3. Verify services exist:
+kubectl get svc -n monitoring
+
+# 4. Check ServiceMonitor label selectors:
+kubectl get servicemonitor -n monitoring -o yaml | grep -A 5 selector
+```
 
 ## References
 
