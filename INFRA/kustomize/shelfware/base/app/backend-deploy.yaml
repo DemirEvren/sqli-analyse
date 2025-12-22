@@ -20,10 +20,28 @@ spec:
         - sh
         - -c
         - |
+          echo "Waiting for PostgreSQL to be ready..."
+          # Retry loop: wait max 60 seconds for database to be ready
+          for i in $(seq 1 30); do
+            if npx prisma db execute --stdin <<< "SELECT 1;" > /dev/null 2>&1; then
+              echo "✓ PostgreSQL is ready!"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "✗ PostgreSQL failed to become ready after 60 seconds"
+              exit 1
+            fi
+            echo "  Attempt $i/30... waiting for database..."
+            sleep 2
+          done
+          
           echo "Running database migrations..."
           npx prisma migrate deploy
+          
           echo "Seeding database..."
           npx prisma db seed || echo "Seed failed or already seeded"
+          
+          echo "✓ Database initialization complete!"
         env:
         - name: DATABASE_URL
           valueFrom:
