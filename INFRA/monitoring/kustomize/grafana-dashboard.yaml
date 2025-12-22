@@ -105,12 +105,12 @@ data:
           "pluginVersion": "8.0.0",
           "targets": [
             {
-              "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+              "expr": "histogram_quantile(0.95, rate(http_request_duration_ms_bucket[5m]))",
               "refId": "A",
               "legendFormat": "p95"
             },
             {
-              "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))",
+              "expr": "histogram_quantile(0.99, rate(http_request_duration_ms_bucket[5m]))",
               "refId": "B",
               "legendFormat": "p99"
             }
@@ -187,7 +187,7 @@ data:
           "pluginVersion": "8.0.0",
           "targets": [
             {
-              "expr": "sum(rate(http_requests_total[5m])) by (method)",
+              "expr": "sum(rate(http_requests_total{job=\"backend\"}[1m])) by (method)",
               "refId": "A",
               "legendFormat": "{{method}}"
             }
@@ -270,7 +270,7 @@ data:
           "pluginVersion": "8.0.0",
           "targets": [
             {
-              "expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))",
+              "expr": "sum(rate(http_requests_total{job=\"backend\",code=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"backend\"}[1m]))",
               "refId": "A",
               "legendFormat": "Error Rate"
             }
