@@ -19,9 +19,10 @@ test-results/
 
 #istio
 **/istio-1*
-scripts/deploy-loadtest.sh
 scripts/deploy-shelfware.sh
 INFRA/kustomize/shelfware/base/db/postgres-secret.yaml
 INFRA/argocd/github-repo-secret.yaml
 output.txt
 scripts/deploy-locust.sh
+scripts/delete-clusters.sh
+scripts/port-forwards.sh

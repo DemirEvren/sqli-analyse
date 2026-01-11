@@ -7,6 +7,4 @@ resources:
   - crd_prometheus.yaml
   - crd_prometheusrule.yaml
   - crd_servicemonitor.yaml
-  - crd_podmonitor.yaml
-  - crd_probe.yaml
   - prometheus-operator.yaml
