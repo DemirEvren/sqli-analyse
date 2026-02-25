@@ -13,21 +13,26 @@ spec:
     targetRevision: "1.43.0"
     helm:
       values: |
-        opencost:
-          exporter:
-            defaultClusterId: "k3d-shelfware-app"
-            persistence:
-              storageClassName: "local-path"
-            prometheus:
-              serverEndpoint: "http://monitoring-stack-kube-prom-prometheus.monitoring.svc.cluster.local:9090"
-          metrics:
-            insertionMethod: Prometheus
-            serviceMonitorEnabled: true
         prometheus:
           server:
             enabled: false
-        serviceAccount:
-          create: true
+        opencost:
+          externalPrometheus:
+            enabled: true
+            address: http://monitoring-stack-kube-prom-prometheus.monitoring.svc.cluster.local:9090
+          metrics:
+            emitPodAnnotations: false
+            emitNamespaceAnnotations: false
+        kubecostModel:
+          warmCache: true
+          warmSavingsCache: true
+        extraEnv:
+          - name: PROMETHEUS_SERVER_ENDPOINT
+            value: http://monitoring-stack-kube-prom-prometheus.monitoring.svc.cluster.local:9090
+          - name: QUERY_WINDOW_DAYS
+            value: "7"
+          - name: DATA_RETENTION_DAILY_RESOLUTION_DAYS
+            value: "7"
   destination:
     server: https://kubernetes.default.svc
     namespace: opencost
