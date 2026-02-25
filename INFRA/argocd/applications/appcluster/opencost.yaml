@@ -8,9 +8,26 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/DemirEvren/sqli-analyse.git
-    targetRevision: main
-    path: INFRA/opencost
+    repoURL: https://opencost.github.io/opencost-helm-chart
+    chart: opencost
+    targetRevision: "1.43.0"
+    helm:
+      values: |
+        opencost:
+          exporter:
+            defaultClusterId: "k3d-shelfware-app"
+            persistence:
+              storageClassName: "local-path"
+            prometheus:
+              serverEndpoint: "http://monitoring-stack-kube-prom-prometheus.monitoring.svc.cluster.local:9090"
+          metrics:
+            insertionMethod: Prometheus
+            serviceMonitorEnabled: true
+        prometheus:
+          server:
+            enabled: false
+        serviceAccount:
+          create: true
   destination:
     server: https://kubernetes.default.svc
     namespace: opencost
