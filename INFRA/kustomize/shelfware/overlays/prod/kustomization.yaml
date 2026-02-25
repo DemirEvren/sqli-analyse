@@ -21,9 +21,7 @@ labels:
 - pairs:
     environment: prod
 images:
-- name: ghcr.io/pxl-systems-expert/shelfware-backend
-  newName: ghcr.io/demirevren/shelfware-backend
-  newTag: PRODv1.0
-- name: ghcr.io/pxl-systems-expert/shelfware-frontend
-  newName: ghcr.io/demirevren/shelfware-frontend
-  newTag: PRODv1.0
+- name: ghcr.io/demirevren/shelfware-backend
+  newTag: latest
+- name: ghcr.io/demirevren/shelfware-frontend
+  newTag: latest

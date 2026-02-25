@@ -7,7 +7,7 @@ spec:
   project: default
 
   source:
-    repoURL: https://github.com/PXL-Systems-Expert/2526-ex-DemirEvren.git
+    repoURL: https://github.com/DemirEvren/sqli-analyse.git
     targetRevision: main
     path: INFRA/kustomize/locust/overlays/loadtest
 

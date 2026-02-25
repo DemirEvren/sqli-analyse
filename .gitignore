@@ -22,3 +22,5 @@ test-results/
 INFRA/kustomize/shelfware/base/db/postgres-secret.yaml
 INFRA/argocd/github-repo-secret.yaml
 output.txt
+scripts/deploy-locust.sh
+scripts/deploy-shelfware.sh
