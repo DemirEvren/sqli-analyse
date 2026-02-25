@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: opencost
+  namespace: opencost
+  labels:
+    app.kubernetes.io/name: opencost
+    app.kubernetes.io/part-of: opencost
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: opencost
+  endpoints:
+  - port: http
+    interval: 30s
+    scrapeTimeout: 10s
+    path: /metrics

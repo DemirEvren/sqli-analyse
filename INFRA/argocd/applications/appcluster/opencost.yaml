@@ -27,12 +27,9 @@ spec:
           warmCache: true
           warmSavingsCache: true
         extraEnv:
-          - name: PROMETHEUS_SERVER_ENDPOINT
-            value: http://monitoring-stack-kube-prom-prometheus.monitoring.svc.cluster.local:9090
-          - name: QUERY_WINDOW_DAYS
-            value: "7"
-          - name: DATA_RETENTION_DAILY_RESOLUTION_DAYS
-            value: "7"
+          PROMETHEUS_SERVER_ENDPOINT: http://monitoring-stack-kube-prom-prometheus.monitoring.svc.cluster.local:9090
+          QUERY_WINDOW_DAYS: "7"
+          DATA_RETENTION_DAILY_RESOLUTION_DAYS: "7"
   destination:
     server: https://kubernetes.default.svc
     namespace: opencost

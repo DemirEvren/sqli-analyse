@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -e
-
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -11,20 +9,15 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}╔════════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║     Kubernetes Port Forward Manager                    ║${NC}"
-echo -e "${BLUE}║     (Grafana, Locust, Prometheus)                     ║${NC}"
+echo -e "${BLUE}║  (Grafana, Locust, Prometheus, ArgoCD, OpenCost)      ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-# Function to check if a port is already forwarded
-check_port_forward() {
+# Function to check if a port is listening
+port_is_listening() {
     local port=$1
-    local name=$2
-    if lsof -i :$port &>/dev/null; then
-        echo -e "${YELLOW}⚠ Port $port already in use (likely $name)${NC}"
-        return 0
-    else
-        return 1
-    fi
+    lsof -i :$port &>/dev/null
+    return $?
 }
 
 # Function to forward a port
@@ -38,26 +31,43 @@ forward_port() {
     
     echo -e "${BLUE}→ Setting up $name...${NC}"
     
-    # Check if port is already in use
-    if check_port_forward $local_port "$name"; then
-        echo -e "${GREEN}✓ $name is already running on localhost:$local_port${NC}"
+    # Check if port is already listening (from previous run or other service)
+    if port_is_listening $local_port; then
+        echo -e "${GREEN}✓ $name is already available on localhost:$local_port${NC}"
         return 0
     fi
     
+    # Verify context exists
+    if ! kubectl config get-contexts $context &>/dev/null; then
+        echo -e "${RED}✗ Context '$context' not found. Skipping $name.${NC}"
+        return 1
+    fi
+    
+    # Verify service exists
+    if ! kubectl --context $context get svc $service -n $namespace &>/dev/null; then
+        echo -e "${RED}✗ Service '$service' not found in namespace '$namespace'. Skipping $name.${NC}"
+        return 1
+    fi
+    
     # Start port forward in background
-    kubectl --context $context port-forward -n $namespace svc/$service $local_port:$remote_port > /dev/null 2>&1 &
-    local pf_pid=$!
-    
-    # Wait a moment for port forward to start
-    sleep 2
-    
-    # Verify it's running
-    if check_port_forward $local_port "$name"; then
-        echo -e "${GREEN}✓ $name started successfully on localhost:$local_port (PID: $pf_pid)${NC}"
-        return 0
+    if kubectl --context $context port-forward -n $namespace svc/$service $local_port:$remote_port > /dev/null 2>&1 &
+    then
+        local pf_pid=$!
+        
+        # Wait a moment for port forward to start
+        sleep 2
+        
+        # Verify it's listening
+        if port_is_listening $local_port; then
+            echo -e "${GREEN}✓ $name started on localhost:$local_port (PID: $pf_pid)${NC}"
+            return 0
+        else
+            echo -e "${RED}✗ Failed to start port-forward for $name on localhost:$local_port${NC}"
+            kill $pf_pid 2>/dev/null || true
+            return 1
+        fi
     else
-        echo -e "${RED}✗ Failed to start $name on localhost:$local_port${NC}"
-        kill $pf_pid 2>/dev/null || true
+        echo -e "${RED}✗ Failed to start port-forward for $name${NC}"
         return 1
     fi
 }
@@ -75,14 +85,24 @@ case $choice in
         echo -e "${BLUE}Starting port forwards...${NC}"
         echo ""
         
+        # Track successes and failures
+        success_count=0
+        fail_count=0
+        
         # Grafana (app cluster)
-        forward_port "k3d-shelfware-app" "monitoring" "monitoring-stack-grafana" "3000" "80" "Grafana"
+        forward_port "k3d-shelfware-app" "monitoring" "monitoring-stack-grafana" "3000" "80" "Grafana" && ((success_count++)) || ((fail_count++))
         
         # Locust (loadtest cluster)
-        forward_port "k3d-shelfware-loadtest" "locust" "locust-master" "8089" "8089" "Locust"
+        forward_port "k3d-shelfware-loadtest" "locust" "locust-master" "8089" "8089" "Locust" && ((success_count++)) || ((fail_count++))
         
-        # Prometheus (app cluster)
-        forward_port "k3d-shelfware-app" "monitoring" "monitoring-stack-kube-prom-prometheus" "9090" "9090" "Prometheus"
+        # Prometheus (app cluster) - using port 19090 to avoid conflict with OpenCost UI
+        forward_port "k3d-shelfware-app" "monitoring" "monitoring-stack-kube-prom-prometheus" "19090" "9090" "Prometheus" && ((success_count++)) || ((fail_count++))
+        
+        # OpenCost (app cluster) - UI on port 9090
+        forward_port "k3d-shelfware-app" "opencost" "opencost" "9090" "9090" "OpenCost" && ((success_count++)) || ((fail_count++))
+        
+        # ArgoCD (app cluster)
+        forward_port "k3d-shelfware-app" "argocd" "argocd-server" "8080" "443" "ArgoCD" && ((success_count++)) || ((fail_count++))
         
         echo ""
         echo -e "${GREEN}╔════════════════════════════════════════════════════════╗${NC}"
@@ -90,8 +110,11 @@ case $choice in
         echo -e "${GREEN}╠════════════════════════════════════════════════════════╣${NC}"
         echo -e "${GREEN}║ Grafana:     http://localhost:3000                     ║${NC}"
         echo -e "${GREEN}║ Locust:      http://localhost:8089                     ║${NC}"
-        echo -e "${GREEN}║ Prometheus:  http://localhost:9090                     ║${NC}"
+        echo -e "${GREEN}║ Prometheus:  http://localhost:19090                    ║${NC}"
+        echo -e "${GREEN}║ OpenCost:    http://localhost:9090                     ║${NC}"
+        echo -e "${GREEN}║ ArgoCD:      https://localhost:8080                    ║${NC}"
         echo -e "${GREEN}╠════════════════════════════════════════════════════════╣${NC}"
+        echo -e "${GREEN}║ Successful: $success_count | Failed: $fail_count                               ║${NC}"
         echo -e "${GREEN}║ Press Ctrl+C to stop port forwards                     ║${NC}"
         echo -e "${GREEN}╚════════════════════════════════════════════════════════╝${NC}"
         echo ""
@@ -115,7 +138,9 @@ case $choice in
         ;;
     
     *)
-        echo -e "${RED}Invalid choice. Please enter 1 or 2.${NC}"
+        echo -e "${RED}✗ Invalid choice. Please enter 1 or 2.${NC}"
         exit 1
         ;;
 esac
+
+exit 0
