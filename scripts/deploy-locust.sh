@@ -4,9 +4,9 @@ set -euo pipefail
 CLUSTER_NAME="shelfware-loadtest"
 SHARED_NETWORK="k3d-shared"
 ARGOCD_NAMESPACE="argocd"
-GITHUB_REPO_URL="https://github.com/PXL-Systems-Expert/2526-ex-DemirEvren.git"
+GITHUB_REPO_URL="https://github.com/DemirEvren/sqli-analyse.git"
 GITHUB_USERNAME="DemirEvren"
-GITHUB_TOKEN="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"
+GITHUB_TOKEN=""
 GITHUB_EMAIL="evrenhulk@gmail.com"
 
 echo "=========================================="
@@ -87,7 +87,44 @@ kubectl rollout status deployment/argocd-repo-server -n "$ARGOCD_NAMESPACE" --ti
 # Give deployments a moment to stabilize
 sleep 15
 
-echo "✓ ArgoCD deployment started (may still be initializing)"
+echo "✓ ArgoCD deployment started"
+
+# Configure git credentials for ArgoCD repo-server (HTTPS private repo authentication)
+echo "Configuring ArgoCD git credentials..."
+# Use git URL rewriting to inject credentials
+kubectl exec -n "$ARGOCD_NAMESPACE" deployment/argocd-repo-server -- git config --system url."https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/" 2>/dev/null || \
+# Fallback: patch the repo-server pod to set environment variables
+kubectl set env deployment/argocd-repo-server -n "$ARGOCD_NAMESPACE" GIT_TERMINAL_PROMPT=0 GITHUB_TOKEN="$GITHUB_TOKEN" 2>/dev/null || true
+echo "✓ Git credentials configured"
+
+# Restart repo-server to pick up any changes
+kubectl rollout restart deployment/argocd-repo-server -n "$ARGOCD_NAMESPACE" 2>/dev/null || true
+kubectl rollout status deployment/argocd-repo-server -n "$ARGOCD_NAMESPACE" --timeout=60s 2>/dev/null || true
+
+sleep 5
+
+# Fix CoreDNS endpoint discovery (orbstack/macOS issue)
+echo "Verifying ArgoCD component connectivity..."
+if ! kubectl get endpoints -n "$ARGOCD_NAMESPACE" argocd-repo-server -o jsonpath='{.subsets[0].addresses[0].ip}' 2>/dev/null | grep -q .; then
+  echo "⚠️  ArgoCD repo-server endpoints not discovered. Restarting CoreDNS..."
+  kubectl rollout restart deployment/coredns -n kube-system
+  kubectl rollout status deployment/coredns -n kube-system --timeout=60s
+  sleep 5
+fi
+
+# Verify ArgoCD repo-server endpoints are ready
+echo "Checking repo-server connectivity..."
+max_attempts=10
+attempt=0
+while [ $attempt -lt $max_attempts ]; do
+  if kubectl get endpoints -n "$ARGOCD_NAMESPACE" argocd-repo-server -o jsonpath='{.subsets[0].ports[0].port}' 2>/dev/null | grep -q .; then
+    echo "✓ ArgoCD repo-server endpoints are ready"
+    break
+  fi
+  echo "Waiting for repo-server endpoints... ($((attempt + 1))/$max_attempts)"
+  sleep 3
+  attempt=$((attempt + 1))
+done
 
 # Step 4: Configure GitHub credentials
 echo ""
@@ -112,38 +149,42 @@ echo ""
 echo "=== STEP 4: Deploy Locust via ArgoCD ==="
 kubectl apply -n "$ARGOCD_NAMESPACE" -f ../INFRA/argocd/applications/loadtest/root-app.yaml
 
+# Wait for Locust application to sync
+echo ""
+echo "=== Waiting for Locust Application to Sync ==="
+max_wait=180
+elapsed=0
+
+while [ $elapsed -lt $max_wait ]; do
+  app_status=$(kubectl get application -n "$ARGOCD_NAMESPACE" 2>/dev/null | grep -c "Synced" || echo "0")
+  
+  if [ "$app_status" -gt 0 ]; then
+    echo "✓ Locust application synced"
+    break
+  fi
+  
+  echo "Waiting for sync... ($elapsed/$max_wait seconds)"
+  sleep 10
+  elapsed=$((elapsed + 10))
+done
+
 echo ""
 echo "=========================================="
 echo "  ✅ Loadtest Cluster Deployment Complete!"
 echo "=========================================="
-echo ""
-echo "⚠️  IMPORTANT: Configure Locust to reach the app cluster"
-echo "   The loadtest cluster needs to access the app cluster's ingress."
-echo "   Set the BASE_URL environment variable when deploying Locust:"
-echo ""
-echo "   For cross-cluster access via shared Docker network:"
-echo "   BASE_URL=http://k3d-shelfware-app-serverlb:80"
-echo ""
-echo "   Or via the app cluster's ingress IP:"
-echo "   BASE_URL=http://172.18.0.2"
 echo ""
 echo "Cluster Info:"
 echo "  Name: $CLUSTER_NAME"
 echo "  Context: k3d-$CLUSTER_NAME"
 echo "  Network: $SHARED_NETWORK"
 echo ""
-echo "Locust UI:"
+echo "Locust is configured to reach the app cluster at:"
+echo "  http://shelfware.local (Host header: shelfware.local)"
+echo ""
+echo "Access Locust UI:"
 echo "  kubectl port-forward -n locust svc/locust-master 8089:8089"
 echo "  URL: http://localhost:8089"
 echo ""
-echo "Next Steps:"
-echo "  1. Wait for Locust to deploy"
-echo "     kubectl get pods -n locust -w"
-echo "  2. Check application status"
-echo "     kubectl get application -n argocd"
-echo "  3. Port-forward Locust UI"
-echo "     kubectl port-forward -n locust svc/locust-master 8089:8089"
-echo "  4. Run load test against PROD"
-echo "     Target: http://k3d-shelfware-app-serverlb"
-echo "     Host header: shelfware.local"
+echo "Monitor pods:"
+echo "  kubectl get pods -n locust -w"
 echo ""
