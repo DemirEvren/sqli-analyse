@@ -16,6 +16,7 @@ spec:
         prometheus:
           server:
             enabled: false
+            url: "http://monitoring-stack-kube-prom-prometheus.monitoring.svc.cluster.local:9090"
         opencost:
           externalPrometheus:
             enabled: true
@@ -26,10 +27,7 @@ spec:
         kubecostModel:
           warmCache: true
           warmSavingsCache: true
-        extraEnv:
-          PROMETHEUS_SERVER_ENDPOINT: http://monitoring-stack-kube-prom-prometheus.monitoring.svc.cluster.local:9090
-          QUERY_WINDOW_DAYS: "7"
-          DATA_RETENTION_DAILY_RESOLUTION_DAYS: "7"
+          prometheusServerEndpoint: http://monitoring-stack-kube-prom-prometheus.monitoring.svc.cluster.local:9090
   destination:
     server: https://kubernetes.default.svc
     namespace: opencost
