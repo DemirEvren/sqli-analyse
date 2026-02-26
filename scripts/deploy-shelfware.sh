@@ -49,21 +49,24 @@ echo ""
 echo "=== COMMAND 2: Deploy ArgoCD ==="
 kubectl apply -k INFRA/argocd
 
-# Wait for ArgoCD
+# Wait for ArgoCD (best-effort, don't fail the whole script)
 echo "Waiting for ArgoCD..."
 kubectl wait --for=condition=available --timeout=300s \
-  deployment/argocd-server -n argocd
+  deployment/argocd-server -n argocd \
+  || echo "⚠️  argocd-server not yet reported as available (continuing)"
 kubectl wait --for=condition=available --timeout=300s \
-  deployment/argocd-repo-server -n argocd
+  deployment/argocd-repo-server -n argocd \
+  || echo "⚠️  argocd-repo-server not yet reported as available (continuing)"
 kubectl wait --for=condition=ready --timeout=300s \
-  pod -l app.kubernetes.io/name=argocd-application-controller -n argocd
+  pod -l app.kubernetes.io/name=argocd-application-controller -n argocd \
+  || echo "⚠️  argocd-application-controller pod not yet reported as ready (continuing)"
 
 # COMMAND 2b: Deploy Ingress-nginx
 echo ""
 echo "=== COMMAND 2b: Deploy Ingress-nginx ==="
 kubectl apply -f INFRA/ingress-nginx/install.yaml
 echo "Waiting for ingress-nginx controller to be ready..."
-kubectl wait --for=condition=ready --timeout=300s \
+kubectl wait --for=condition=ready --timeout=30s \
   pod -l app.kubernetes.io/name=ingress-nginx -n ingress-nginx 2>/dev/null || echo "⚠️  Ingress-nginx may take longer to start"
 
 # Create GitHub credentials secret (not in Git!)
@@ -150,29 +153,46 @@ echo "=== COMMAND 3: Deploy Applications ==="
 
 # Fix any old GitHub repo URLs in application manifests
 echo "Updating application manifest URLs..."
-find INFRA/argocd/applications -name "*.yaml" -exec sed -i '' \
+find INFRA/argocd/applications -name "*.yaml" -exec sed -i \
   "s|https://github.com/PXL-Systems-Expert/2526-ex-DemirEvren.git|https://github.com/DemirEvren/sqli-analyse.git|g" {} \;
 echo "✓ URLs updated"
 
-kubectl apply -f INFRA/argocd/applications/appcluster/
+# Ensure monitoring CRDs (including ServiceMonitor) are installed before applying
+# any resources that depend on them (e.g. opencost-servicemonitor).
+echo "Pre-installing monitoring CRDs..."
+kubectl apply -f INFRA/monitoring/operator/crd_prometheus.yaml
+kubectl apply -f INFRA/monitoring/operator/crd_prometheusrule.yaml
+kubectl apply -f INFRA/monitoring/operator/crd_servicemonitor.yaml
+kubectl apply -f INFRA/monitoring/operator/crd_podmonitor.yaml
+kubectl apply -f INFRA/monitoring/operator/crd_probe.yaml
 
-# Wait for applications to sync
+# Clean up old opencost Application to avoid conflicts
+echo "Cleaning up old opencost resources..."
+kubectl delete application opencost -n argocd --ignore-not-found=true 2>/dev/null || true
+
+# Deploy opencost static manifests (not as an Argo Application)
+echo "Deploying OpenCost..."
+kubectl apply -f INFRA/argocd/applications/appcluster/opencost-static.yaml
+kubectl apply -f INFRA/argocd/applications/appcluster/opencost-servicemonitor-direct.yaml
+
+# Deploy other applications (exclude static opencost files from bulk apply)
+find INFRA/argocd/applications/appcluster -name "*.yaml" ! -name "opencost-*.yaml" -exec kubectl apply -f {} \;
+
+# Wait for applications to sync (silently)
 echo ""
 echo "=== Waiting for Applications to Sync ==="
 max_wait=300
 elapsed=0
-synced_count=0
 
 while [ $elapsed -lt $max_wait ]; do
   synced_count=$(kubectl get applications -n argocd -o jsonpath='{.items[?(@.status.operationState.finishedAt)].metadata.name}' 2>/dev/null | wc -w)
   total_count=$(kubectl get applications -n argocd --no-headers 2>/dev/null | wc -l)
   
   if [ "$synced_count" -ge "$total_count" ] && [ "$total_count" -gt 0 ]; then
-    echo "✓ All applications synced ($synced_count/$total_count)"
+    echo "✓ Applications synced"
     break
   fi
   
-  echo "Synced: $synced_count/$total_count applications"
   sleep 10
   elapsed=$((elapsed + 10))
 done
@@ -186,6 +206,17 @@ if kubectl get deploy -n prod-shelfware 2>/dev/null | grep -q "frontend"; then
   echo "✓ Shelfware deployments are present"
 else
   echo "⚠️  Shelfware deployments not yet visible"
+fi
+
+# OpenCost is now deployed via static manifests with correct Prometheus endpoint
+echo ""
+echo "=== Verifying OpenCost Status ==="
+if kubectl get deploy -n opencost 2>/dev/null | grep -q "opencost"; then
+  kubectl rollout status deployment/opencost -n opencost --timeout=120s 2>/dev/null \
+    && echo "✓ OpenCost deployment is ready" \
+    || echo "⚠️  OpenCost deployment not yet ready"
+else
+  echo "⚠️  OpenCost deployment not found"
 fi
 
 # Update /etc/hosts for local domain access
