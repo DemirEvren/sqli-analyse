@@ -28,13 +28,22 @@ spec:
           warmCache: true
           warmSavingsCache: true
           prometheusServerEndpoint: http://monitoring-stack-kube-prom-prometheus.monitoring.svc.cluster.local:9090
+          env: 
+            - name: PROMETHEUS_SERVER_ENDPOINT
+              value: http://monitoring-stack-kube-prom-prometheus.monitoring.svc.cluster.local:9090
+        kubecostInit:
+          enabled: true
+        persistence:
+          enabled: true
+        global:
+          prometheus_server_endpoint: http://monitoring-stack-kube-prom-prometheus.monitoring.svc.cluster.local:9090
   destination:
     server: https://kubernetes.default.svc
     namespace: opencost
   syncPolicy:
     automated:
       prune: true
-      selfHeal: true
+      selfHeal: false
     syncOptions:
       - CreateNamespace=true
     retry:

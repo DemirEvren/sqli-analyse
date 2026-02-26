@@ -6,7 +6,7 @@ SHARED_NETWORK="k3d-shared"
 ARGOCD_NAMESPACE="argocd"
 
 # Secrets (NOT in Git - defined here)
-GITHUB_TOKEN=""
+GITHUB_TOKEN=""  # Set your GitHub token here
 GITHUB_USERNAME="DemirEvren"
 GITHUB_REPO_URL="https://github.com/DemirEvren/sqli-analyse.git"
 POSTGRES_PASSWORD="postgres"

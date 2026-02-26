@@ -6,7 +6,7 @@ SHARED_NETWORK="k3d-shared"
 ARGOCD_NAMESPACE="argocd"
 GITHUB_REPO_URL="https://github.com/DemirEvren/sqli-analyse.git"
 GITHUB_USERNAME="DemirEvren"
-GITHUB_TOKEN=""
+GITHUB_TOKEN=""  # Set your GitHub token here
 GITHUB_EMAIL="evrenhulk@gmail.com"
 
 echo "=========================================="

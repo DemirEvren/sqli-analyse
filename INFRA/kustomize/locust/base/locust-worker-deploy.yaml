@@ -24,7 +24,7 @@ spec:
           - "--master-host=locust-master"
         env:
           - name: BASE_URL
-            value: "http://172.18.0.5"
+            value: "http://192.168.97.4"
           - name: TARGET_ENV
             value: "prod"
           - name: HOST_HEADER
