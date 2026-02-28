@@ -85,8 +85,8 @@ spec:
     app.kubernetes.io/name: opencost
   ports:
     - name: http
-      port: 9090
-      targetPort: 9090
+      port: 9003
+      targetPort: 9003
   type: ClusterIP
 ---
 apiVersion: apps/v1
@@ -107,13 +107,30 @@ spec:
         app.kubernetes.io/name: opencost
     spec:
       serviceAccountName: opencost
+      # Wait for Prometheus to be reachable before starting OpenCost.
+      # This avoids the startup DNS resolution errors that occur when
+      # OpenCost starts before the monitoring stack is ready.
+      initContainers:
+      - name: wait-for-prometheus
+        image: busybox:1.36
+        command:
+          - sh
+          - -c
+          - |
+            echo "Waiting for Prometheus to be reachable..."
+            until wget -q --spider --timeout=3 \
+              "http://monitoring-stack-kube-prom-prometheus.monitoring.svc.cluster.local:9090/-/ready" 2>/dev/null; do
+              echo "  Prometheus not ready yet, retrying in 5s..."
+              sleep 5
+            done
+            echo "Prometheus is reachable!"
       containers:
       - name: opencost
         image: ghcr.io/opencost/opencost:1.113.0
         imagePullPolicy: IfNotPresent
         ports:
         - name: http
-          containerPort: 9090
+          containerPort: 9003
         env:
         - name: PROMETHEUS_SERVER_ENDPOINT
           value: "http://monitoring-stack-kube-prom-prometheus.monitoring.svc.cluster.local:9090"
@@ -126,3 +143,15 @@ spec:
           requests:
             cpu: 100m
             memory: 128Mi
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 9003
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 9003
+          initialDelaySeconds: 60
+          periodSeconds: 30

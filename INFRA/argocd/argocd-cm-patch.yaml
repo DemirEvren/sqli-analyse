@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+data:
+  # Use annotation-based tracking instead of the default label-based tracking.
+  # The default (label) overwrites app.kubernetes.io/instance with the ArgoCD
+  # Application name, breaking kube-state-metrics and node-exporter
+  # ServiceMonitor selectors that match on the Helm release instance label.
+  application.resourceTrackingMethod: annotation

@@ -95,11 +95,11 @@ case $choice in
         # Locust (loadtest cluster)
         forward_port "k3d-shelfware-loadtest" "locust" "locust-master" "8089" "8089" "Locust" && ((success_count++)) || ((fail_count++))
         
-        # Prometheus (app cluster) - using port 19090 to avoid conflict with OpenCost UI
-        forward_port "k3d-shelfware-app" "monitoring" "monitoring-stack-kube-prom-prometheus" "19090" "9090" "Prometheus" && ((success_count++)) || ((fail_count++))
+        # Prometheus (app cluster)
+        forward_port "k3d-shelfware-app" "monitoring" "monitoring-stack-kube-prom-prometheus" "9090" "9090" "Prometheus" && ((success_count++)) || ((fail_count++))
         
-        # OpenCost (app cluster) - UI on port 9090
-        forward_port "k3d-shelfware-app" "opencost" "opencost" "9090" "9090" "OpenCost" && ((success_count++)) || ((fail_count++))
+        # OpenCost (app cluster) - API on port 9003
+        forward_port "k3d-shelfware-app" "opencost" "opencost" "9003" "9003" "OpenCost" && ((success_count++)) || ((fail_count++))
         
         # ArgoCD (app cluster)
         forward_port "k3d-shelfware-app" "argocd" "argocd-server" "8080" "443" "ArgoCD" && ((success_count++)) || ((fail_count++))
@@ -110,8 +110,8 @@ case $choice in
         echo -e "${GREEN}╠════════════════════════════════════════════════════════╣${NC}"
         echo -e "${GREEN}║ Grafana:     http://localhost:3000                     ║${NC}"
         echo -e "${GREEN}║ Locust:      http://localhost:8089                     ║${NC}"
-        echo -e "${GREEN}║ Prometheus:  http://localhost:19090                    ║${NC}"
-        echo -e "${GREEN}║ OpenCost:    http://localhost:9090                     ║${NC}"
+        echo -e "${GREEN}║ Prometheus:  http://localhost:9090                    ║${NC}"
+        echo -e "${GREEN}║ OpenCost:    http://localhost:9003                     ║${NC}"
         echo -e "${GREEN}║ ArgoCD:      https://localhost:8080                    ║${NC}"
         echo -e "${GREEN}╠════════════════════════════════════════════════════════╣${NC}"
         echo -e "${GREEN}║ Successful: $success_count | Failed: $fail_count                               ║${NC}"

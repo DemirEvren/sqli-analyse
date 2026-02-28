@@ -10,3 +10,9 @@ resources:
   # ArgoCD installation
   - install.yaml
 
+patches:
+  # Switch to annotation-based resource tracking so ArgoCD does not
+  # overwrite the app.kubernetes.io/instance label on managed resources.
+  # Without this, kube-state-metrics and node-exporter ServiceMonitor
+  # selectors break because they match on the Helm release instance label.
+  - path: argocd-cm-patch.yaml
