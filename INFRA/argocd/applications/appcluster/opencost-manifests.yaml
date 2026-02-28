@@ -1,0 +1,128 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: opencost
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: opencost
+  namespace: opencost
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: opencost
+rules:
+  - apiGroups: ['']
+    resources:
+      - configmaps
+      - deployments
+      - nodes
+      - pods
+      - services
+      - resourcequotas
+      - replicationcontrollers
+      - limitranges
+      - persistentvolumeclaims
+      - persistentvolumes
+      - namespaces
+      - endpoints
+    verbs: [get, list, watch]
+  - apiGroups: [extensions]
+    resources:
+      - daemonsets
+      - deployments
+      - replicasets
+    verbs: [get, list, watch]
+  - apiGroups: [apps]
+    resources:
+      - statefulsets
+      - daemonsets
+      - deployments
+      - replicasets
+    verbs: [list, watch, get]
+  - apiGroups: [batch]
+    resources:
+      - jobs
+      - cronjobs
+    verbs: [get, list, watch]
+  - apiGroups: [autoscaling]
+    resources:
+      - horizontalpodautoscalers
+    verbs: [get, list, watch]
+  - apiGroups: [policy]
+    resources:
+      - poddisruptionbudgets
+    verbs: [get, list, watch]
+  - apiGroups: [storage.k8s.io]
+    resources:
+      - storageclasses
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: opencost
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: opencost
+subjects:
+  - kind: ServiceAccount
+    name: opencost
+    namespace: opencost
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opencost
+  namespace: opencost
+  labels:
+    app.kubernetes.io/name: opencost
+spec:
+  selector:
+    app.kubernetes.io/name: opencost
+  ports:
+    - name: http
+      port: 9090
+      targetPort: 9090
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opencost
+  namespace: opencost
+  labels:
+    app.kubernetes.io/name: opencost
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: opencost
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: opencost
+    spec:
+      serviceAccountName: opencost
+      containers:
+      - name: opencost
+        image: ghcr.io/opencost/opencost:1.113.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 9090
+        env:
+        - name: PROMETHEUS_SERVER_ENDPOINT
+          value: "http://monitoring-stack-kube-prom-prometheus.monitoring.svc.cluster.local:9090"
+        - name: CLUSTER_ID
+          value: "k3d-shelfware-app"
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
