@@ -18,6 +18,16 @@ echo "=========================================="
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
+# Ensure inotify limits are high enough for 2 simultaneous k3d clusters.
+# Default fs.inotify.max_user_instances=128 is exhausted by 6 k3s nodes (kubelet+containerd
+# each consume multiple instances), causing agent nodes to silently fail to become Ready.
+echo ""
+echo "=== Kernel inotify limits (required for multi-cluster k3d) ==="
+sudo sysctl -w fs.inotify.max_user_instances=1024 >/dev/null
+sudo sysctl -w fs.inotify.max_user_watches=1048576 >/dev/null
+echo "✓ fs.inotify.max_user_instances=$(sysctl -n fs.inotify.max_user_instances)"
+echo "✓ fs.inotify.max_user_watches=$(sysctl -n fs.inotify.max_user_watches)"
+
 # Infrastructure
 docker network create "$SHARED_NETWORK" 2>/dev/null || true
 k3d cluster delete "$CLUSTER_NAME" 2>/dev/null || true
@@ -31,7 +41,11 @@ k3d cluster create "$CLUSTER_NAME" \
   --agents 2 \
   --port "80:80@loadbalancer" \
   --port "443:443@loadbalancer" \
-  --k3s-arg "--disable=traefik@server:0"
+  --k3s-arg "--disable=traefik@server:0" \
+  --k3s-arg "--kubelet-arg=eviction-hard=imagefs.available<1%,nodefs.available<1%,nodefs.inodesFree<1%@server:*" \
+  --k3s-arg "--kubelet-arg=eviction-hard=imagefs.available<1%,nodefs.available<1%,nodefs.inodesFree<1%@agent:*" \
+  --k3s-arg "--kubelet-arg=image-gc-high-threshold=99@server:*" \
+  --k3s-arg "--kubelet-arg=image-gc-high-threshold=99@agent:*"
 
 # Switch context and verify
 echo "Switching to cluster context..."

@@ -13,6 +13,16 @@ echo "=========================================="
 echo "  Shelfware Loadtest Cluster Deployment"
 echo "=========================================="
 
+# Step 0a: Ensure inotify limits are high enough for 2 simultaneous k3d clusters.
+# Default fs.inotify.max_user_instances=128 is exhausted by 6 k3s nodes (kubelet+containerd
+# each consume multiple instances), causing agent nodes to silently fail to become Ready.
+echo ""
+echo "=== Kernel inotify limits (required for multi-cluster k3d) ==="
+sudo sysctl -w fs.inotify.max_user_instances=1024 >/dev/null
+sudo sysctl -w fs.inotify.max_user_watches=1048576 >/dev/null
+echo "✓ fs.inotify.max_user_instances=$(sysctl -n fs.inotify.max_user_instances)"
+echo "✓ fs.inotify.max_user_watches=$(sysctl -n fs.inotify.max_user_watches)"
+
 # Step 0: Ensure shared network exists
 echo ""
 echo "=== Verify Shared Docker Network ==="
@@ -38,7 +48,11 @@ k3d cluster create "$CLUSTER_NAME" \
   --agents 2 \
   --no-lb \
   --k3s-arg "--disable=metrics-server@server:0" \
-  --k3s-arg "--disable=metrics-server@server:*"
+  --k3s-arg "--disable=metrics-server@server:*" \
+  --k3s-arg "--kubelet-arg=eviction-hard=imagefs.available<1%,nodefs.available<1%,nodefs.inodesFree<1%@server:*" \
+  --k3s-arg "--kubelet-arg=eviction-hard=imagefs.available<1%,nodefs.available<1%,nodefs.inodesFree<1%@agent:*" \
+  --k3s-arg "--kubelet-arg=image-gc-high-threshold=99@server:*" \
+  --k3s-arg "--kubelet-arg=image-gc-high-threshold=99@agent:*"
 
 echo "✓ Cluster created on network: $SHARED_NETWORK"
 

@@ -1,0 +1,73 @@
+# Kepler Helm chart values
+# Install with:
+#   helm repo add kepler https://sustainable-computing-io.github.io/kepler-helm-chart
+#   helm repo update
+#   helm install kepler kepler/kepler \
+#     --namespace monitoring \
+#     --create-namespace \
+#     -f kepler-helm-values.yaml
+#
+# Upgrade:
+#   helm upgrade kepler kepler/kepler --namespace monitoring -f kepler-helm-values.yaml
+#
+# Check metrics:
+#   kubectl port-forward -n monitoring svc/kepler 9102:9102
+#   curl http://localhost:9102/metrics | grep kepler_node_package
+
+image:
+  repository: quay.io/sustainable_computing_io/kepler
+  tag: release-0.7.12
+  pullPolicy: IfNotPresent
+
+# Export metrics to Prometheus
+serviceMonitor:
+  enabled: true
+  # Must match your kube-prometheus-stack release label
+  additionalLabels:
+    release: monitoring-stack
+  namespace: monitoring
+  interval: 30s
+
+# Kepler feature flags
+features:
+  enabledEBPF: true       # Required for container-level attribution
+  enabledGPU: false       # Set true if cluster has NVIDIA GPUs
+  enabledCGroupID: true   # cgroup v2 for accurate container attribution
+
+# DaemonSet tolerations — run on ALL nodes including control-plane
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+  - key: node-role.kubernetes.io/master
+    operator: Exists
+    effect: NoSchedule
+
+# Resource limits
+resources:
+  requests:
+    cpu: "50m"
+    memory: "64Mi"
+  limits:
+    cpu: "200m"
+    memory: "256Mi"
+
+# RBAC
+serviceAccount:
+  create: true
+  name: kepler
+
+# Security context (privileged needed for /sys/kernel/debug)
+securityContext:
+  privileged: true
+
+# Expose on port 9102
+service:
+  type: ClusterIP
+  port: 9102
+
+# k3d / local testing note:
+# RAPL may not be accessible inside Docker containers on some hosts.
+# On a bare-metal Linux host, RAPL works in k3d.
+# On a VM (e.g., GitHub Codespaces), RAPL counters may be zero — this is
+# expected; Kepler will still run and kanalyzer will fall back to CCF estimation.

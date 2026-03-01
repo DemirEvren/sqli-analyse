@@ -1,0 +1,271 @@
+name: "Terraform — AKS Infrastructure"
+
+# ─── When this runs ───────────────────────────────────────────────────────────
+#
+#  Pull request → plan only (no apply)
+#  Push to main  → plan + apply (auto-deploy infrastructure changes)
+#  Manual        → workflow_dispatch with an optional destroy flag
+#
+# ─────────────────────────────────────────────────────────────────────────────
+on:
+  push:
+    branches: [main]
+    paths:
+      - "INFRA/terraform/**"
+      - ".github/workflows/terraform.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "INFRA/terraform/**"
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Terraform action to run"
+        required: true
+        default: "plan"
+        type: choice
+        options: [plan, apply, destroy]
+
+# ─── Permissions for OIDC authentication (no stored Azure credentials) ────────
+permissions:
+  id-token: write   # for OIDC token exchange with Azure
+  contents: read
+  pull-requests: write  # for PR plan comments
+
+env:
+  TF_VERSION: "1.7.5"
+  TF_WORKING_DIR: "INFRA/terraform"
+  ARM_USE_OIDC: "true"
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+jobs:
+  # ─── Terraform plan (runs on every PR and push) ────────────────────────────
+  plan:
+    name: "Terraform Plan"
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'review' }}
+
+    defaults:
+      run:
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+    outputs:
+      plan_exitcode: ${{ steps.plan.outputs.exitcode }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: true
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Write backend config
+        run: |
+          cat <<EOF > backend.conf
+          resource_group_name  = "rg-shelfware-tfstate"
+          storage_account_name = "${{ secrets.TF_STATE_STORAGE_ACCOUNT }}"
+          container_name       = "tfstate"
+          key                  = "shelfware/terraform.tfstate"
+          EOF
+
+      - name: Terraform Init
+        id: init
+        run: terraform init -backend-config=backend.conf -input=false
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate -no-color
+
+      - name: Terraform Format Check
+        id: fmt
+        run: terraform fmt -check -recursive -no-color
+        continue-on-error: true
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan \
+            -no-color \
+            -input=false \
+            -detailed-exitcode \
+            -out=tfplan \
+            -var="postgres_password=${{ secrets.POSTGRES_PASSWORD }}" \
+            -var="jwt_secret=${{ secrets.JWT_SECRET }}" \
+            -var="github_token=${{ secrets.GH_TOKEN }}" \
+            -var="azure_subscription_id=${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+        continue-on-error: true  # exitcode 2 = changes present (not an error)
+
+      - name: Upload plan artifact
+        if: steps.plan.outputs.exitcode != '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: ${{ env.TF_WORKING_DIR }}/tfplan
+          retention-days: 5
+
+      - name: Comment plan on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          PLAN_OUTPUT: ${{ steps.plan.outputs.stdout }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Terraform Plan 📋
+            \`\`\`
+            ${process.env.PLAN_OUTPUT}
+            \`\`\`
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+      - name: Fail on plan error
+        if: steps.plan.outputs.exitcode == '1'
+        run: exit 1
+
+  # ─── Terraform Apply (main branch only, after plan succeeds) ───────────────
+  apply:
+    name: "Terraform Apply"
+    runs-on: ubuntu-latest
+    needs: plan
+    environment: production
+    if: |
+      (github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.plan.outputs.plan_exitcode == '2') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
+
+    defaults:
+      run:
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Write backend config
+        run: |
+          cat <<EOF > backend.conf
+          resource_group_name  = "rg-shelfware-tfstate"
+          storage_account_name = "${{ secrets.TF_STATE_STORAGE_ACCOUNT }}"
+          container_name       = "tfstate"
+          key                  = "shelfware/terraform.tfstate"
+          EOF
+
+      - name: Terraform Init
+        run: terraform init -backend-config=backend.conf -input=false
+
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan
+          path: ${{ env.TF_WORKING_DIR }}
+
+      - name: Terraform Apply
+        run: |
+          # Stage 1: Azure infra only (AKS clusters must exist before k8s providers connect)
+          terraform apply -input=false -auto-approve \
+            -target=azurerm_resource_group.main \
+            -target=module.monitoring \
+            -target=module.networking \
+            -target=module.acr \
+            -target=module.aks_app \
+            -target=module.aks_loadtest
+
+          # Stage 2: Kubernetes resources (providers now have valid endpoints)
+          terraform apply -input=false -auto-approve tfplan
+
+      - name: Save kubeconfigs as artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubeconfigs
+          path: ${{ env.TF_WORKING_DIR }}/kubeconfigs/
+          retention-days: 1   # Short retention — these are sensitive
+
+      - name: Run bootstrap script
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          GITHUB_USERNAME: "DemirEvren"
+          KUBECONFIG: ${{ env.TF_WORKING_DIR }}/kubeconfigs/merged.yaml
+        run: |
+          cd ..  # Back to INFRA/
+          bash terraform/bootstrap-aks.sh
+
+  # ─── Terraform Destroy (manual only, with confirmation) ────────────────────
+  destroy:
+    name: "Terraform Destroy"
+    runs-on: ubuntu-latest
+    environment: production  # Requires manual approval in GitHub environments
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
+
+    defaults:
+      run:
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Write backend config
+        run: |
+          cat <<EOF > backend.conf
+          resource_group_name  = "rg-shelfware-tfstate"
+          storage_account_name = "${{ secrets.TF_STATE_STORAGE_ACCOUNT }}"
+          container_name       = "tfstate"
+          key                  = "shelfware/terraform.tfstate"
+          EOF
+
+      - name: Terraform Init
+        run: terraform init -backend-config=backend.conf -input=false
+
+      - name: Terraform Destroy
+        run: |
+          terraform destroy \
+            -auto-approve \
+            -input=false \
+            -var="postgres_password=${{ secrets.POSTGRES_PASSWORD }}" \
+            -var="jwt_secret=${{ secrets.JWT_SECRET }}" \
+            -var="github_token=${{ secrets.GH_TOKEN }}" \
+            -var="azure_subscription_id=${{ secrets.AZURE_SUBSCRIPTION_ID }}"

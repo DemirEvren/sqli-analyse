@@ -1,0 +1,13 @@
+# ─── backend.conf.example ────────────────────────────────────────────────────
+# Copy to backend.conf and fill in the values from `terraform -chdir=bootstrap output`.
+# Then initialise the main module with:
+#
+#   terraform init -backend-config=backend.conf
+#
+# NEVER commit backend.conf — it is in .gitignore.
+# ─────────────────────────────────────────────────────────────────────────────
+
+resource_group_name  = "rg-shelfware-tfstate"
+storage_account_name = "REPLACE_WITH_BOOTSTRAP_OUTPUT"   # tfstateshlf<random-hex>
+container_name       = "tfstate"
+key                  = "shelfware/terraform.tfstate"
