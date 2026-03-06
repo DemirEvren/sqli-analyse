@@ -13,8 +13,6 @@
 #  • Defender-for-Containers integration stub (disabled by default for cost)
 # ─────────────────────────────────────────────────────────────────────────────
 
-data "azurerm_client_config" "current" {}
-
 locals {
   # cluster_fqdn is exposed via the azurerm_kubernetes_cluster.main.fqdn attribute
   # (output) — no need to construct it manually.
@@ -158,24 +156,14 @@ resource "azurerm_kubernetes_cluster_node_pool" "user" {
   }
 }
 
-# ─── RBAC: grant cluster admin to the Terraform caller ───────────────────────
-# Required so the bootstrap script (run after terraform apply) can install ArgoCD.
-
-resource "azurerm_role_assignment" "terraform_aks_admin" {
-  scope                = azurerm_kubernetes_cluster.main.id
-  role_definition_name = "Azure Kubernetes Service Cluster Admin Role"
-  principal_id         = data.azurerm_client_config.current.object_id
-}
-
-# ─── RBAC: allow AKS kubelet to pull from ACR ────────────────────────────────
-# If var.acr_id is set, grant the cluster's kubelet identity AcrPull.
-resource "azurerm_role_assignment" "kubelet_acr_pull" {
-  count = var.acr_id != "" ? 1 : 0
-
-  scope                = var.acr_id
-  role_definition_name = "AcrPull"
-  principal_id         = azurerm_kubernetes_cluster.main.kubelet_identity[0].object_id
-}
+# ─── RBAC ───────────────────────────────────────────────────────────────────────
+# No azurerm_role_assignment resources needed:
+#  • ACR removed — images pulled from ghcr.io via ghcr-credentials K8s secret
+#  • Cluster admin — local_account_disabled=false, so the kubeconfig written by
+#    Terraform already contains a client certificate with full admin access
+#
+# This means only the built-in "Contributor" role is required to deploy.
+# No privileged roles (Owner, User Access Administrator) needed.
 
 # ─── Kubeconfig file ──────────────────────────────────────────────────────────
 resource "local_file" "kubeconfig" {

@@ -189,22 +189,22 @@ bootstrap_tfstate() {
     return
   fi
 
-  # Check if the tfstate resource group already exists
+  # Check if the tfstate resource group already exists (must be pre-created by admin)
   local tfstate_rg="rg-shelfware-tfstate"
-  if az group show --name "${tfstate_rg}" >/dev/null 2>&1; then
-    warn "Resource group '${tfstate_rg}' already exists — backend was previously bootstrapped"
-    info "Retrieving existing storage account name..."
+  if ! az group show --name "${tfstate_rg}" >/dev/null 2>&1; then
+    fail "Resource group '${tfstate_rg}' does not exist. Ask your Azure admin to create it and assign you Storage Account Contributor + Locks Contributor roles on it."
+  fi
 
-    local sa_name
-    sa_name=$(az storage account list \
-      --resource-group "${tfstate_rg}" \
-      --query "[0].name" -o tsv 2>/dev/null || true)
+  # Check if already bootstrapped (storage account exists)
+  local sa_name
+  sa_name=$(az storage account list \
+    --resource-group "${tfstate_rg}" \
+    --query "[0].name" -o tsv 2>/dev/null || true)
 
-    if [ -n "${sa_name}" ]; then
-      info "Found existing storage account: ${sa_name}"
-      write_backend_conf "${tfstate_rg}" "${sa_name}"
-      return
-    fi
+  if [ -n "${sa_name}" ]; then
+    warn "Resource group '${tfstate_rg}' already has storage account '${sa_name}' — backend was previously bootstrapped"
+    write_backend_conf "${tfstate_rg}" "${sa_name}"
+    return
   fi
 
   log "Creating tfstate backend (this takes ~1 minute)..."
@@ -297,13 +297,11 @@ terraform_apply() {
 
   # ── Stage 1: Azure infrastructure ────────────────────────────────────────
   log "Stage 1/2: Creating Azure infrastructure (~15-20 min)..."
-  info "Resource group, VNet, NAT gateway, ACR, Log Analytics, AKS clusters"
+  info "VNet, NAT gateway, Log Analytics, AKS clusters (resource group must already exist)"
 
   terraform apply -auto-approve -input=false \
-    -target=azurerm_resource_group.main \
     -target=module.monitoring \
     -target=module.networking \
-    -target=module.acr \
     -target=module.aks_app \
     -target=module.aks_loadtest
 

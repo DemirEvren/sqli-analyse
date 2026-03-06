@@ -10,7 +10,9 @@ cloud_provider = "azure"
 # ── Azure ─────────────────────────────────────────────────────────────────────
 azure_subscription_id    = ""                 # e.g. "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 azure_location           = "westeurope"
-azure_location_secondary = "northeurope"
+
+# Resource Group (must be pre-created by Azure admin)
+# azure_resource_group_name = "rg-shelfware-prod"  # uncomment to override auto-name
 
 # ── Project ───────────────────────────────────────────────────────────────────
 project     = "shelfware"
@@ -37,9 +39,6 @@ loadtest_cluster_kubernetes_version = "1.30"
 loadtest_cluster_node_count         = 1
 loadtest_cluster_node_vm_size       = "Standard_D2s_v3"
 
-# ── ACR ───────────────────────────────────────────────────────────────────────
-acr_sku                     = "Premium"
-acr_geo_replication_enabled = false
 
 # ── Monitoring ────────────────────────────────────────────────────────────────
 log_analytics_retention_days = 30

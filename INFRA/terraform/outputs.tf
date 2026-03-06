@@ -1,17 +1,8 @@
 # ─── Outputs ──────────────────────────────────────────────────────────────────
 
 output "resource_group_name" {
-  description = "Azure resource group containing all shelfware resources."
-  value       = azurerm_resource_group.main.name
-}
-
-output "acr_login_server" {
-  description = "ACR login server. Use in image tags: <acr_login_server>/shelfware-backend:<tag>"
-  value       = module.acr.login_server
-}
-
-output "acr_name" {
-  value = module.acr.acr_name
+  description = "Azure resource group containing all shelfware resources (pre-created by admin)."
+  value       = data.azurerm_resource_group.main.name
 }
 
 output "app_cluster_name" {
@@ -77,8 +68,9 @@ output "next_steps" {
          echo "$INGRESS_IP  shelfware.local test.shelfware.local"
          # Add the above line to /etc/hosts OR configure your Azure DNS zone.
 
-    5. ACR login (for pushing images):
-         az acr login --name ${module.acr.acr_name}
+    NOTE: Container images are pulled from ghcr.io (not ACR).
+          The ghcr-credentials Kubernetes secret is created by Terraform.
+          No ACR login or AcrPull role assignment needed.
 
     ════════════════════════════════════════════════════════════════════════════
   EOT

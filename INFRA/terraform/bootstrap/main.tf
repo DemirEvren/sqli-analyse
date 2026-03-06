@@ -48,16 +48,12 @@ locals {
   suffix = lower(random_id.suffix.hex) # 8 hex chars
 }
 
-# ─── Resource Group ───────────────────────────────────────────────────────────
-resource "azurerm_resource_group" "tfstate" {
-  name     = var.resource_group_name
-  location = var.location
-
-  tags = {
-    managed-by  = "terraform-bootstrap"
-    environment = "shared"
-    project     = var.project
-  }
+# ─── Resource Group (pre-created by admin) ────────────────────────────────────
+# The admin creates this RG and assigns the deployer:
+#   • Storage Account Contributor (17d1049b-…) — manage storage account
+#   • Locks Contributor            (28bf596f-…) — set CanNotDelete lock
+data "azurerm_resource_group" "tfstate" {
+  name = var.resource_group_name
 }
 
 # ─── Storage Account ──────────────────────────────────────────────────────────
@@ -65,8 +61,8 @@ resource "azurerm_resource_group" "tfstate" {
 # State locking is provided natively via blob leasing — no separate lock table needed.
 resource "azurerm_storage_account" "tfstate" {
   name                = "tfstate${var.project_short}${local.suffix}"
-  resource_group_name = azurerm_resource_group.tfstate.name
-  location            = azurerm_resource_group.tfstate.location
+  resource_group_name = data.azurerm_resource_group.tfstate.name
+  location            = data.azurerm_resource_group.tfstate.location
 
   account_tier             = "Standard"
   account_replication_type = "ZRS" # Zone-redundant: survives AZ outage
@@ -88,7 +84,11 @@ resource "azurerm_storage_account" "tfstate" {
     }
   }
 
-  tags = azurerm_resource_group.tfstate.tags
+  tags = {
+    managed-by  = "terraform-bootstrap"
+    environment = "shared"
+    project     = var.project
+  }
 }
 
 # ─── Blob Container ───────────────────────────────────────────────────────────

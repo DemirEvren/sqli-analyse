@@ -41,19 +41,13 @@ variable "azure_subscription_id" {
 }
 
 variable "azure_location" {
-  description = "Primary Azure region for all resources."
+  description = "Primary Azure region. Used as fallback; the pre-created resource group's location takes precedence."
   type        = string
   default     = "westeurope"
 }
 
-variable "azure_location_secondary" {
-  description = "Secondary Azure region used for ACR geo-replication (optional)."
-  type        = string
-  default     = "northeurope"
-}
-
 variable "azure_resource_group_name" {
-  description = "Name of the main Azure resource group. Leave empty to auto-generate."
+  description = "Name of the pre-created Azure resource group. Must exist before running Terraform. Leave empty to use auto-generated name 'rg-<project>-<environment>' (the admin must still pre-create it)."
   type        = string
   default     = ""
 }
@@ -154,46 +148,27 @@ variable "loadtest_cluster_node_vm_size" {
   default     = "Standard_D2s_v3"
 }
 
-# ─── ACR ─────────────────────────────────────────────────────────────────────
-
-variable "acr_sku" {
-  description = "Azure Container Registry SKU. Premium enables geo-replication and private link."
-  type        = string
-  default     = "Premium"
-
-  validation {
-    condition     = contains(["Basic", "Standard", "Premium"], var.acr_sku)
-    error_message = "acr_sku must be Basic, Standard, or Premium."
-  }
-}
-
-variable "acr_geo_replication_enabled" {
-  description = "Enable geo-replication for ACR (requires Premium SKU)."
-  type        = bool
-  default     = false # Set true in production for latency/resilience
-}
-
 # ─── Application secrets (passed through to Kubernetes secrets) ───────────────
 
 variable "postgres_password" {
-  description = "PostgreSQL password for the shelfware database. Store in Vault/CI secrets."
+  description = "PostgreSQL password for the shelfware database. Pass via TF_VAR_postgres_password env var."
   type        = string
   sensitive   = true
-  default     = "postgres-change-me" # MUST be overridden in production
+  # No default — forces the deployer to set it explicitly via env var or secrets.env
 }
 
 variable "jwt_secret" {
-  description = "JWT signing secret for the shelfware backend."
+  description = "JWT signing secret for the shelfware backend. Pass via TF_VAR_jwt_secret env var."
   type        = string
   sensitive   = true
-  default     = "jwt-change-me-in-production"
+  # No default — forces the deployer to set it explicitly
 }
 
 variable "github_token" {
-  description = "GitHub PAT (packages:read) used by Kubernetes to pull images from ghcr.io."
+  description = "GitHub PAT (packages:read) used by Kubernetes to pull images from ghcr.io. Pass via TF_VAR_github_token env var."
   type        = string
   sensitive   = true
-  default     = ""
+  # No default — forces the deployer to set it explicitly
 }
 
 variable "github_username" {

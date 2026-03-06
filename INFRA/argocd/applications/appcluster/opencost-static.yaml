@@ -136,6 +136,56 @@ spec:
           value: "http://monitoring-stack-kube-prom-prometheus.monitoring.svc.cluster.local:9090"
         - name: CLUSTER_ID
           value: "k3d-shelfware-app"
+        # ── Azure Cloud Integration ──────────────────────────────────────
+        # When running on AKS, OpenCost uses the Azure Billing Rate Card API
+        # to fetch REAL pricing per VM type (including RI/spot prices).
+        # Without this, OpenCost falls back to public on-demand list prices.
+        #
+        # For k3d (local), these are not needed — OpenCost uses a default
+        # pricing model that's good enough for local dev.
+        #
+        # For AKS: create a Kubernetes Secret called "opencost-azure-creds"
+        # in the opencost namespace with the following keys:
+        #   AZURE_SUBSCRIPTION_ID, AZURE_TENANT_ID,
+        #   AZURE_CLIENT_ID, AZURE_CLIENT_SECRET
+        #
+        # See: https://www.opencost.io/docs/configuration/azure
+        # ─────────────────────────────────────────────────────────────────
+        - name: CLOUD_PROVIDER_API_KEY
+          value: "AIzaSyD29bGxmHAVEOBYtgd8sYM2gM2sfNQz04"  # OpenCost default (Google pricing fallback — NOT a secret)
+        - name: OPENCOST_CLOUD
+          value: "azure"
+        # These are read from the Secret when it exists (AKS).
+        # On k3d they're simply empty and OpenCost uses its default pricing.
+        - name: AZURE_SUBSCRIPTION_ID
+          valueFrom:
+            secretKeyRef:
+              name: opencost-azure-creds
+              key: AZURE_SUBSCRIPTION_ID
+              optional: true
+        - name: AZURE_TENANT_ID
+          valueFrom:
+            secretKeyRef:
+              name: opencost-azure-creds
+              key: AZURE_TENANT_ID
+              optional: true
+        - name: AZURE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: opencost-azure-creds
+              key: AZURE_CLIENT_ID
+              optional: true
+        - name: AZURE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: opencost-azure-creds
+              key: AZURE_CLIENT_SECRET
+              optional: true
+        # ── Custom Pricing (optional, for k3d) ───────────────────────────
+        # When no Azure creds are available, OpenCost can use a custom CSV.
+        # Set this to a URL or ConfigMap path with your own node prices.
+        # - name: CUSTOM_PRICING
+        #   value: "default"
         resources:
           limits:
             cpu: 500m

@@ -144,12 +144,48 @@ create_app_secrets() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+create_opencost_azure_secret() {
+  log "Creating OpenCost Azure cloud integration secret..."
+
+  # These env vars are optional. If not set, OpenCost falls back to public
+  # on-demand list prices (good enough for dev, not for production billing).
+  local sub_id="${AZURE_SUBSCRIPTION_ID:-}"
+  local tenant_id="${AZURE_TENANT_ID:-${ARM_TENANT_ID:-}}"
+  local client_id="${AZURE_CLIENT_ID:-${ARM_CLIENT_ID:-}}"
+  local client_secret="${AZURE_CLIENT_SECRET:-${ARM_CLIENT_SECRET:-}}"
+
+  if [ -z "$sub_id" ] || [ -z "$tenant_id" ] || [ -z "$client_id" ] || [ -z "$client_secret" ]; then
+    warn "OpenCost Azure credentials not fully set — skipping cloud integration."
+    warn "OpenCost will use public on-demand pricing (±30-50% off real cost)."
+    warn "To enable: set AZURE_SUBSCRIPTION_ID, AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET"
+    return
+  fi
+
+  kubectl create namespace opencost \
+    --context "$APP_CONTEXT" \
+    --dry-run=client -o yaml | kubectl apply -f - --context "$APP_CONTEXT"
+
+  kubectl create secret generic opencost-azure-creds \
+    -n opencost \
+    --context "$APP_CONTEXT" \
+    --from-literal=AZURE_SUBSCRIPTION_ID="${sub_id}" \
+    --from-literal=AZURE_TENANT_ID="${tenant_id}" \
+    --from-literal=AZURE_CLIENT_ID="${client_id}" \
+    --from-literal=AZURE_CLIENT_SECRET="${client_secret}" \
+    --dry-run=client -o yaml | kubectl apply -f - --context "$APP_CONTEXT"
+
+  log "OpenCost Azure cloud integration secret created ✓"
+  log "OpenCost will use real Azure pricing (RI, spot, EA discounts) ✓"
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 deploy_app_cluster() {
   log "=== APP CLUSTER: ${APP_CONTEXT} ==="
 
   install_argocd "$APP_CONTEXT"
   add_repo_credentials "$APP_CONTEXT"
   create_app_secrets
+  create_opencost_azure_secret
 
   log "Applying ArgoCD root Application (app cluster)..."
   kubectl apply -f "${INFRA_DIR}/argocd/applications/appcluster/root-app.yaml" \

@@ -2,23 +2,29 @@
 # Orchestrates all modules for the Shelfware AKS deployment.
 #
 # Dependency order:
-#   1. resource_group
+#   1. resource_group (pre-created by Azure admin — looked up as data source)
 #   2. monitoring (Log Analytics) — needed by AKS OMS agent
 #   3. networking (VNet, subnets, NAT)
-#   4. acr
-#   5. aks_app
-#   6. aks_loadtest
-#   7. Kubernetes bootstrap resources (namespaces, secrets, ArgoCD)
+#   4. aks_app
+#   5. aks_loadtest
+#   6. Kubernetes bootstrap resources (namespaces, secrets, ArgoCD)
+#
+# NOTE: ACR removed — images are pulled from ghcr.io via ghcr-credentials secret.
+#       This eliminates all azurerm_role_assignment resources.
+#
+# RBAC: The deployer needs the following built-in roles on the main RG:
+#   • Network Contributor          (4d97b98b-…) — VNet/subnets/NSG/NAT/IP
+#   • AKS Contributor Role         (ed7f3fbd-…) — AKS clusters + node pools
+#   • Log Analytics Contributor    (92aaf0da-…) — Log Analytics workspace
+#   • Monitoring Contributor        (749f88d5-…) — Diagnostic Settings
+#
+# The resource group itself is NOT created by Terraform. It must be
+# pre-created by your Azure admin. Terraform looks it up via a data source.
 # ─────────────────────────────────────────────────────────────────────────────
 
-data "azurerm_client_config" "current" {}
-
 locals {
-  # Resource group: auto-generate if not set in tfvars
+  # Resource group name: must match the pre-created RG in Azure
   rg_name = var.azure_resource_group_name != "" ? var.azure_resource_group_name : "rg-${var.project}-${var.environment}"
-
-  # ACR name: globally unique, no dashes, ≤ 50 chars
-  acr_name = lower(replace("${var.project}${var.environment}acr", "-", ""))
 
   common_tags = merge(
     {
@@ -31,12 +37,12 @@ locals {
   )
 }
 
-# ─── 1. Resource Group ────────────────────────────────────────────────────────
+# ─── 1. Resource Group (pre-created by admin) ────────────────────────────────
+# The admin creates the RG and assigns the deployer the necessary roles on it.
+# Terraform only reads the RG — it does NOT create or destroy it.
 
-resource "azurerm_resource_group" "main" {
-  name     = local.rg_name
-  location = var.azure_location
-  tags     = local.common_tags
+data "azurerm_resource_group" "main" {
+  name = local.rg_name
 }
 
 # ─── 2. Monitoring (Log Analytics) ───────────────────────────────────────────
@@ -46,8 +52,8 @@ module "monitoring" {
   source = "./modules/monitoring"
 
   prefix              = var.project
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
+  location            = data.azurerm_resource_group.main.location
+  resource_group_name = data.azurerm_resource_group.main.name
   retention_days      = var.log_analytics_retention_days
 
   # Diagnostic settings are created as standalone resources below (after AKS)
@@ -63,8 +69,8 @@ module "networking" {
   source = "./modules/networking"
 
   prefix              = var.project
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
+  location            = data.azurerm_resource_group.main.location
+  resource_group_name = data.azurerm_resource_group.main.name
   address_space       = var.vnet_address_space
 
   subnet_app_cidr      = var.subnet_app_cidr
@@ -74,25 +80,7 @@ module "networking" {
   tags = local.common_tags
 }
 
-# ─── 4. ACR ───────────────────────────────────────────────────────────────────
-
-module "acr" {
-  source = "./modules/acr"
-
-  name                = local.acr_name
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
-  sku                 = var.acr_sku
-
-  secondary_location      = var.azure_location_secondary
-  geo_replication_enabled = var.acr_geo_replication_enabled
-
-  log_analytics_workspace_id = module.monitoring.log_analytics_workspace_id
-
-  tags = local.common_tags
-}
-
-# ─── 5. AKS — App Cluster ─────────────────────────────────────────────────────
+# ─── 4. AKS — App Cluster ──────────────────────────────────────────────────────
 # Mirrors the k3d "shelfware-app" cluster:
 #   k3d: 1 server + 2 agents, 8 vCPU / 22.8 GiB each, traefik disabled
 #   AKS: 1 system node (D2s_v3) + 2–5 user nodes (D4s_v3)
@@ -102,8 +90,8 @@ module "aks_app" {
 
   cluster_name        = var.app_cluster_name
   cluster_role        = "app"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
+  location            = data.azurerm_resource_group.main.location
+  resource_group_name = data.azurerm_resource_group.main.name
   kubernetes_version  = var.app_cluster_kubernetes_version
 
   subnet_id = module.networking.subnet_app_id
@@ -120,12 +108,11 @@ module "aks_app" {
   dns_service_ip  = "10.100.0.10"
 
   log_analytics_workspace_id = module.monitoring.log_analytics_workspace_id
-  acr_id                     = module.acr.acr_id
 
   tags = local.common_tags
 }
 
-# ─── 6. AKS — Loadtest Cluster ───────────────────────────────────────────────
+# ─── 5. AKS — Loadtest Cluster ───────────────────────────────────────────────
 # Mirrors the k3d "shelfware-loadtest" cluster:
 #   k3d: 1 server + 2 agents, no loadbalancer, no traefik
 #   AKS: 1 system node only (no user node pool needed for Locust)
@@ -135,8 +122,8 @@ module "aks_loadtest" {
 
   cluster_name        = var.loadtest_cluster_name
   cluster_role        = "loadtest"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
+  location            = data.azurerm_resource_group.main.location
+  resource_group_name = data.azurerm_resource_group.main.name
   kubernetes_version  = var.loadtest_cluster_kubernetes_version
 
   subnet_id = module.networking.subnet_loadtest_id
@@ -149,12 +136,11 @@ module "aks_loadtest" {
   dns_service_ip  = "10.101.0.10"
 
   log_analytics_workspace_id = module.monitoring.log_analytics_workspace_id
-  acr_id                     = module.acr.acr_id
 
   tags = local.common_tags
 }
 
-# ─── 7. AKS Diagnostic Settings ──────────────────────────────────────────────
+# ─── 6. AKS Diagnostic Settings ──────────────────────────────────────────────
 # These live in main.tf (not in the monitoring module) to avoid a circular
 # module-level dependency. Both modules are fully created before these resources
 # are evaluated, so Terraform's resource graph has no cycle.
@@ -191,7 +177,7 @@ resource "azurerm_monitor_diagnostic_setting" "aks_loadtest" {
   }
 }
 
-# ─── 8. Kubernetes Bootstrap — App Cluster ────────────────────────────────────
+# ─── 7. Kubernetes Bootstrap — App Cluster ────────────────────────────────────
 # These resources mirror the manual steps in INFRA/OPERATIONS.md §1.2–1.3:
 #   • Namespaces (prod-shelfware, test-shelfware)
 #   • Kubernetes Secret: postgres-secret (per namespace)
@@ -299,7 +285,7 @@ resource "kubernetes_secret" "ghcr_test" {
   }
 }
 
-# ─── 8. Kubernetes Bootstrap — Loadtest Cluster ───────────────────────────────
+# ─── 7. Kubernetes Bootstrap — Loadtest Cluster ───────────────────────────────
 
 resource "kubernetes_namespace" "locust" {
   provider = kubernetes.loadtest

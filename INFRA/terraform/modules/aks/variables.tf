@@ -78,18 +78,6 @@ variable "log_analytics_workspace_id" {
   default     = ""
 }
 
-variable "acr_id" {
-  description = "Azure Container Registry resource ID. Leave empty to skip AcrPull role assignment."
-  type        = string
-  default     = ""
-}
-
-variable "aks_admin_group_id" {
-  description = "Azure AD group object ID that gets AKS cluster admin rights."
-  type        = string
-  default     = ""
-}
-
 variable "tags" {
   type    = map(string)
   default = {}

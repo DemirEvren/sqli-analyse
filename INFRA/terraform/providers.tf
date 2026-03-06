@@ -33,8 +33,8 @@ provider "azuread" {
 #
 #   Stage 1 — create Azure infra only:
 #     terraform apply -target=module.aks_app -target=module.aks_loadtest \
-#                     -target=module.acr -target=module.networking \
-#                     -target=module.monitoring -target=azurerm_resource_group.main
+#                     -target=module.networking \
+#                     -target=module.monitoring -target=data.azurerm_resource_group.main
 #
 #   Stage 2 — create Kubernetes resources (providers now have valid endpoints):
 #     terraform apply
