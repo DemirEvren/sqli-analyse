@@ -16,13 +16,13 @@ variable "cloud_provider" {
 variable "project" {
   description = "Project name used as a prefix/tag in all resource names."
   type        = string
-  default     = "shelfware"
+  default     = "sqli"
 }
 
 variable "environment" {
   description = "Deployment environment (dev, staging, prod). Used in resource names and tags."
   type        = string
-  default     = "prod"
+  default     = "main"
 }
 
 variable "tags" {

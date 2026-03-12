@@ -190,7 +190,7 @@ bootstrap_tfstate() {
   fi
 
   # Check if the tfstate resource group already exists (must be pre-created by admin)
-  local tfstate_rg="rg-shelfware-tfstate"
+  local tfstate_rg="rg-sqli-tfstate"
   if ! az group show --name "${tfstate_rg}" >/dev/null 2>&1; then
     fail "Resource group '${tfstate_rg}' does not exist. Ask your Azure admin to create it and assign you Storage Account Contributor + Locks Contributor roles on it."
   fi
@@ -421,9 +421,9 @@ run_destroy() {
   warn "  • Both AKS clusters (shelfware-app, shelfware-loadtest)"
   warn "  • ACR and all images stored in it"
   warn "  • VNet, NAT gateway, Log Analytics workspace"
-  warn "  • Resource group rg-shelfware-prod and everything inside it"
+  warn "  • Resource group rg-sqli-main and everything inside it"
   warn ""
-  warn "The tfstate storage account (rg-shelfware-tfstate) is NOT destroyed."
+  warn "The tfstate storage account (rg-sqli-tfstate) is NOT destroyed."
   echo ""
   ask "Type 'yes' to confirm destruction: "
   read -r confirmation

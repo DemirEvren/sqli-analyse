@@ -10,17 +10,17 @@
 cloud_provider = "azure"
 
 # Azure
-azure_subscription_id    = ""               # Your Azure subscription ID
+azure_subscription_id    = "430e6120-a54d-43ca-91a8-ea21aa57a800"  # Azure Research and Development
 azure_location           = "westeurope"
 azure_location_secondary = "northeurope"    # For ACR geo-replication
 
 # Project
-project     = "shelfware"
-environment = "prod"
+project     = "sqli"
+environment = "main"
 
 tags = {
   team    = "platform"
-  project = "shelfware"
+  project = "sqli"
 }
 
 # AKS — App Cluster
@@ -38,10 +38,6 @@ loadtest_cluster_name                = "shelfware-loadtest"
 loadtest_cluster_kubernetes_version  = "1.30"
 loadtest_cluster_node_count          = 1
 loadtest_cluster_node_vm_size        = "Standard_D2s_v3"
-
-# ACR
-acr_sku                     = "Premium"
-acr_geo_replication_enabled = false  # Set true for multi-region production
 
 # Monitoring
 log_analytics_retention_days = 30

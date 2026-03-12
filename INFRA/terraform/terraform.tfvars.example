@@ -12,7 +12,7 @@ azure_subscription_id    = ""                 # e.g. "xxxxxxxx-xxxx-xxxx-xxxx-xx
 azure_location           = "westeurope"
 
 # Resource Group (must be pre-created by Azure admin)
-# azure_resource_group_name = "rg-shelfware-prod"  # uncomment to override auto-name
+# azure_resource_group_name = "rg-sqli-main"  # uncomment to override auto-name
 
 # ── Project ───────────────────────────────────────────────────────────────────
 project     = "shelfware"

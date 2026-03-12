@@ -1,7 +1,7 @@
 variable "resource_group_name" {
   description = "Resource group that holds only the Terraform state storage account."
   type        = string
-  default     = "rg-shelfware-tfstate"
+  default     = "rg-sqli-tfstate"
 }
 
 variable "location" {
@@ -13,13 +13,13 @@ variable "location" {
 variable "project" {
   description = "Short project name used in resource names and tags."
   type        = string
-  default     = "shelfware"
+  default     = "sqli"
 }
 
 variable "project_short" {
   description = "≤8 chars — used inside the storage account name (globally unique, ≤24 total)."
   type        = string
-  default     = "shlf"
+  default     = "sqli"
 
   validation {
     condition     = length(var.project_short) <= 8 && can(regex("^[a-z0-9]+$", var.project_short))

@@ -7,7 +7,7 @@
 # NEVER commit backend.conf — it is in .gitignore.
 # ─────────────────────────────────────────────────────────────────────────────
 
-resource_group_name  = "rg-shelfware-tfstate"
-storage_account_name = "REPLACE_WITH_BOOTSTRAP_OUTPUT"   # tfstateshlf<random-hex>
+resource_group_name  = "rg-sqli-tfstate"
+storage_account_name = "REPLACE_WITH_BOOTSTRAP_OUTPUT"   # tfstatesqli<random-hex>
 container_name       = "tfstate"
 key                  = "shelfware/terraform.tfstate"
