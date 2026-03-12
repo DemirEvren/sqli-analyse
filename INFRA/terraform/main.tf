@@ -115,7 +115,7 @@ module "aks_app" {
 # ─── 5. AKS — Loadtest Cluster ───────────────────────────────────────────────
 # Mirrors the k3d "shelfware-loadtest" cluster:
 #   k3d: 1 server + 2 agents, no loadbalancer, no traefik
-#   AKS: 1 system node only (no user node pool needed for Locust)
+#   AKS: system node (CriticalAddonsOnly) + user node pool for ArgoCD + Locust
 
 module "aks_loadtest" {
   source = "./modules/aks"
@@ -130,6 +130,12 @@ module "aks_loadtest" {
 
   system_node_count   = var.loadtest_cluster_node_count
   system_node_vm_size = var.loadtest_cluster_node_vm_size
+
+  # Smaller user pool — quota in West Europe is limited (4 vCPUs free)
+  # Standard_D2s_v3 = 2 vCPUs × 1 node = 2 vCPUs (well within quota)
+  user_node_vm_size = "Standard_D2s_v3"
+  user_node_min     = 1
+  user_node_max     = 2
 
   # Different service CIDR to avoid overlap when both kubeconfigs are merged
   service_cidr    = "10.101.0.0/16"
@@ -333,10 +339,9 @@ resource "kubernetes_secret" "argocd_repo_app" {
   }
 
   data = {
-    type     = "git"
-    url      = var.argocd_repo_url
-    username = var.github_username
-    password = var.github_token
+    type = "git"
+    url  = var.argocd_repo_url
+    # No credentials — repo is public, ArgoCD uses anonymous access
   }
 }
 
@@ -351,10 +356,9 @@ resource "kubernetes_secret" "argocd_repo_loadtest" {
   }
 
   data = {
-    type     = "git"
-    url      = var.argocd_repo_url
-    username = var.github_username
-    password = var.github_token
+    type = "git"
+    url  = var.argocd_repo_url
+    # No credentials — repo is public, ArgoCD uses anonymous access
   }
 }
 

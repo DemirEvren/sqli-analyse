@@ -117,9 +117,10 @@ resource "azurerm_kubernetes_cluster" "main" {
   }
 }
 
-# ─── User Node Pool (app cluster only) ───────────────────────────────────────
-# The user pool runs all shelfware workloads: frontend, backend, postgres,
-# ingress-nginx, prometheus, grafana, ArgoCD, KEDA, Kepler.
+# ─── User Node Pool (both clusters) ──────────────────────────────────────────
+# App cluster: runs shelfware, ingress-nginx, prometheus, grafana, ArgoCD, KEDA.
+# Loadtest cluster: runs ArgoCD + Locust (system pool has CriticalAddonsOnly
+#   taint so workloads cannot schedule there without a user pool).
 # k3d comparison: 2 agent nodes with 8 vCPU / 22.8 GiB each
 #   → Standard_D4s_v3 (4 vCPU, 16 GiB) × min 2 gives comparable capacity
 
@@ -133,20 +134,20 @@ resource "azurerm_kubernetes_cluster_node_pool" "user" {
   os_disk_size_gb       = 128
   max_pods              = 50
 
-  auto_scaling_enabled = true
-  min_count            = var.user_node_min
-  max_count            = var.user_node_max
+  enable_auto_scaling = true
+  min_count           = var.user_node_min
+  max_count           = var.user_node_max
 
   # Only user workloads here — no system pods
   node_taints = []
   node_labels = {
     "nodepool-type" = "user"
-    "cluster-role"  = "app"
-    "workload"      = "shelfware"
+    "cluster-role"  = var.cluster_role
+    "workload"      = var.cluster_role == "app" ? "shelfware" : "loadtest"
   }
 
   upgrade_settings {
-    max_surge = "33%"
+    max_surge = "1"
   }
 
   tags = var.tags

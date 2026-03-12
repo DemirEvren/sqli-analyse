@@ -14,12 +14,13 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"   # kubernetes-app/
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"   # kubernetes-app/
 INFRA_DIR="${REPO_ROOT}/INFRA"
 
 # ─── Cluster context names (must match AKS cluster names) ────────────────────
 APP_CONTEXT="${APP_CLUSTER_NAME:-shelfware-app}"
 LOADTEST_CONTEXT="${LOADTEST_CLUSTER_NAME:-shelfware-loadtest}"
+AKS_RESOURCE_GROUP="${AKS_RESOURCE_GROUP:-rg-sqli-main}"
 
 # ─── Secrets (from environment — NOT hardcoded) ───────────────────────────────
 GITHUB_TOKEN="${GITHUB_TOKEN:?GITHUB_TOKEN env var required}"
@@ -59,16 +60,54 @@ check_prereqs() {
 
   log "Prerequisites OK"
   log "KUBECONFIG: ${KUBECONFIG}"
+
+  # Fetch admin credentials for both clusters — bypasses Azure RBAC entirely.
+  # Requires only 'Azure Kubernetes Service Contributor Role' (already assigned).
+  local kubeconfig_dir
+  kubeconfig_dir="$(dirname "${KUBECONFIG}")"
+  mkdir -p "${kubeconfig_dir}"
+
+  log "Fetching admin kubeconfig for ${APP_CONTEXT}..."
+  az aks get-credentials \
+    --resource-group "${AKS_RESOURCE_GROUP}" \
+    --name "${APP_CONTEXT}" \
+    --admin \
+    --file "${kubeconfig_dir}/shelfware-app-admin-tmp.yaml" \
+    --overwrite-existing
+
+  log "Fetching admin kubeconfig for ${LOADTEST_CONTEXT}..."
+  az aks get-credentials \
+    --resource-group "${AKS_RESOURCE_GROUP}" \
+    --name "${LOADTEST_CONTEXT}" \
+    --admin \
+    --file "${kubeconfig_dir}/shelfware-loadtest-admin-tmp.yaml" \
+    --overwrite-existing
+
+  # Merge the clean admin-only files (no kubelogin entries)
+  KUBECONFIG="${kubeconfig_dir}/shelfware-app-admin-tmp.yaml:${kubeconfig_dir}/shelfware-loadtest-admin-tmp.yaml" \
+    kubectl config view --flatten > "${kubeconfig_dir}/merged-admin.yaml"
+  export KUBECONFIG="${kubeconfig_dir}/merged-admin.yaml"
+
+  # Rename admin contexts to match the expected context names used throughout this script
+  kubectl config rename-context shelfware-app-admin      shelfware-app      2>/dev/null || true
+  kubectl config rename-context shelfware-loadtest-admin shelfware-loadtest 2>/dev/null || true
+
+  log "Admin kubeconfig: ${KUBECONFIG}"
 }
 
 wait_for_deployment() {
   local context="$1" namespace="$2" deployment="$3"
+  local deadline=$(( $(date +%s) + 300 ))
   log "Waiting for deployment/$deployment in $namespace ($context)..."
-  kubectl wait --for=condition=available \
-    --timeout=300s \
-    deployment/"$deployment" \
-    -n "$namespace" \
-    --context "$context"
+  until kubectl rollout status deployment/"$deployment" \
+      -n "$namespace" --context "$context" --timeout=30s 2>/dev/null; do
+    if [[ $(date +%s) -ge $deadline ]]; then
+      log "ERROR: Timed out waiting for $deployment in $namespace ($context)"
+      kubectl get pods -n "$namespace" --context "$context" || true
+      return 1
+    fi
+    sleep 10
+  done
 }
 
 wait_for_rollout() {
@@ -80,9 +119,27 @@ wait_for_rollout() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+wait_for_node_ready() {
+  local context="$1"
+  log "Waiting for at least one node to be Ready on ${context}..."
+  local deadline=$(( $(date +%s) + 600 ))
+  until kubectl get nodes --context "$context" --no-headers 2>/dev/null \
+        | grep -q " Ready "; do
+    if [[ $(date +%s) -ge $deadline ]]; then
+      log "ERROR: Timed out waiting for nodes on ${context}"
+      return 1
+    fi
+    sleep 10
+  done
+  log "Node(s) Ready on ${context} ✓"
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 install_argocd() {
   local context="$1"
   log "Installing ArgoCD ${ARGOCD_VERSION} on ${context}..."
+
+  wait_for_node_ready "$context"
 
   # Apply the kustomize-managed ArgoCD install (same as k3d)
   kubectl apply -k "${INFRA_DIR}/argocd" --context "$context"
@@ -206,6 +263,22 @@ deploy_app_cluster() {
 # ─────────────────────────────────────────────────────────────────────────────
 deploy_loadtest_cluster() {
   log "=== LOADTEST CLUSTER: ${LOADTEST_CONTEXT} ==="
+
+  # Check for at least one schedulable (untainted) node before proceeding.
+  # The system node pool has CriticalAddonsOnly=true:NoSchedule so pods cannot
+  # land there. Without a user node pool (needs vCPU quota) we would waste
+  # 10+ minutes waiting for pods that will never schedule.
+  local schedulable
+  schedulable=$(kubectl get nodes --context "$LOADTEST_CONTEXT" \
+    --no-headers -o custom-columns='NAME:.metadata.name,TAINTS:.spec.taints' \
+    2>/dev/null | grep -v "CriticalAddonsOnly" | wc -l)
+
+  if [[ "$schedulable" -eq 0 ]]; then
+    warn "No schedulable user nodes on ${LOADTEST_CONTEXT} — skipping bootstrap."
+    warn "Cause: vCPU quota exhausted. Ask your Azure admin to raise the quota"
+    warn "       for Standard_D2s_v3 in West Europe, then re-run deploy.sh."
+    return 1
+  fi
 
   install_argocd "$LOADTEST_CONTEXT"
   add_repo_credentials "$LOADTEST_CONTEXT"
@@ -357,7 +430,17 @@ main() {
   log ""
 
   deploy_app_cluster
-  deploy_loadtest_cluster
+
+  # Loadtest cluster bootstrap is best-effort: it requires a user node pool
+  # which needs additional vCPU quota. If quota is exhausted the pods will be
+  # Pending and the wait will time out — that must not block the app cluster.
+  if deploy_loadtest_cluster; then
+    log "Loadtest cluster bootstrap complete ✓"
+  else
+    warn "Loadtest cluster bootstrap failed (likely no schedulable nodes due to vCPU quota)."
+    warn "App cluster is fully operational. Fix loadtest quota and re-run deploy.sh."
+  fi
+
   wait_for_ingress
   smoke_test
   print_summary

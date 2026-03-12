@@ -3,6 +3,9 @@ kind: ServiceMonitor
 metadata:
   name: opencost
   namespace: opencost
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"  # After prometheus-operator (wave -2) installs the CRD
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
   labels:
     app.kubernetes.io/name: opencost
     app.kubernetes.io/part-of: opencost

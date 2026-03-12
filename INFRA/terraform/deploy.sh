@@ -46,6 +46,12 @@ for arg in "$@"; do
   esac
 done
 
+# ─── Load secrets from secrets.env if it exists ────────────────────────────────
+if [ -f "${SCRIPT_DIR}/secrets.env" ]; then
+  # shellcheck disable=SC1091
+  source "${SCRIPT_DIR}/secrets.env"
+fi
+
 # ─────────────────────────────────────────────────────────────────────────────
 check_prereqs() {
   section "Checking prerequisites"
@@ -81,23 +87,14 @@ azure_login() {
     local current_sub
     current_sub=$(az account show --query "{name:name, id:id}" -o tsv 2>/dev/null | tr '\t' ' ')
     log "Already logged in: ${current_sub}"
-    ask "Use this subscription? [Y/n]: "
-    read -r ans
-    if [[ "${ans,,}" == "n" ]]; then
-      az login
-    fi
   else
     log "Logging in to Azure..."
     az login
   fi
 
-  # Resolve subscription
+  # Use current subscription without prompting
   if [ -z "${AZURE_SUBSCRIPTION_ID:-}" ]; then
-    local current_id
-    current_id=$(az account show --query id -o tsv)
-    ask "Subscription ID [${current_id}]: "
-    read -r input
-    AZURE_SUBSCRIPTION_ID="${input:-${current_id}}"
+    AZURE_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
   fi
 
   az account set --subscription "${AZURE_SUBSCRIPTION_ID}"
@@ -110,16 +107,22 @@ collect_secrets() {
   info "These are stored as Kubernetes Secrets (encrypted at rest in Azure). Never committed to Git."
   echo ""
 
-  if [ -z "${POSTGRES_PASSWORD:-}" ]; then
+  # Use TF_VAR_* from secrets.env if available, fallback to POSTGRES_PASSWORD env var
+  POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-${TF_VAR_postgres_password:-}}"
+  if [ -n "${POSTGRES_PASSWORD}" ]; then
+    info "POSTGRES_PASSWORD loaded from environment ✓"
+  else
     ask "Postgres password (min 16 chars): "
     read -rs POSTGRES_PASSWORD; echo ""
     export POSTGRES_PASSWORD
-  else
-    info "POSTGRES_PASSWORD already set in environment ✓"
   fi
   [ ${#POSTGRES_PASSWORD} -lt 16 ] && fail "POSTGRES_PASSWORD must be at least 16 characters"
 
-  if [ -z "${JWT_SECRET:-}" ]; then
+  # Use TF_VAR_* from secrets.env if available, fallback to JWT_SECRET env var
+  JWT_SECRET="${JWT_SECRET:-${TF_VAR_jwt_secret:-}}"
+  if [ -n "${JWT_SECRET}" ]; then
+    info "JWT_SECRET loaded from environment ✓"
+  else
     ask "JWT secret (min 32 chars, or press Enter to auto-generate): "
     read -rs JWT_SECRET; echo ""
     if [ -z "${JWT_SECRET}" ]; then
@@ -127,22 +130,28 @@ collect_secrets() {
       info "Auto-generated JWT secret ✓"
     fi
     export JWT_SECRET
-  else
-    info "JWT_SECRET already set in environment ✓"
   fi
   [ ${#JWT_SECRET} -lt 32 ] && fail "JWT_SECRET must be at least 32 characters"
 
-  if [ -z "${GITHUB_TOKEN:-}" ]; then
-    info "GitHub PAT needed to pull images from ghcr.io/demirevren/*"
-    info "Create at: GitHub → Settings → Developer settings → Personal access tokens → Fine-grained"
-    info "Required permission: read:packages (Contents: Read)"
-    ask "GitHub token (ghp_...): "
-    read -rs GITHUB_TOKEN; echo ""
-    export GITHUB_TOKEN
+  if [ "${SKIP_IMAGES}" = false ]; then
+    # Use TF_VAR_* from secrets.env if available, fallback to GITHUB_TOKEN env var
+    GITHUB_TOKEN="${GITHUB_TOKEN:-${TF_VAR_github_token:-}}"
+    if [ -z "${GITHUB_TOKEN}" ]; then
+      info "GitHub PAT needed to pull images from ghcr.io/demirevren/*"
+      info "Create at: GitHub → Settings → Developer settings → Personal access tokens → Fine-grained"
+      info "Required permission: read:packages (Contents: Read)"
+      ask "GitHub token (ghp_...): "
+      read -rs GITHUB_TOKEN; echo ""
+      export GITHUB_TOKEN
+    else
+      info "GITHUB_TOKEN loaded from environment ✓"
+    fi
+    [ -z "${GITHUB_TOKEN}" ] && fail "GITHUB_TOKEN is required"
   else
-    info "GITHUB_TOKEN already set in environment ✓"
+    info "Skipping image builds — GitHub token not required ✓"
+    GITHUB_TOKEN="${GITHUB_TOKEN:-${TF_VAR_github_token:-dummy}}"
+    export GITHUB_TOKEN
   fi
-  [ -z "${GITHUB_TOKEN}" ] && fail "GITHUB_TOKEN is required"
 
   # Export as Terraform variables
   export TF_VAR_postgres_password="${POSTGRES_PASSWORD}"
