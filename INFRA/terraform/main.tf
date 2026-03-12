@@ -204,6 +204,10 @@ resource "kubernetes_namespace" "prod_shelfware" {
   }
 
   depends_on = [module.aks_app]
+
+  timeouts {
+    delete = "10m"
+  }
 }
 
 resource "kubernetes_namespace" "test_shelfware" {
@@ -217,6 +221,10 @@ resource "kubernetes_namespace" "test_shelfware" {
   }
 
   depends_on = [module.aks_app]
+
+  timeouts {
+    delete = "10m"
+  }
 }
 
 # ─── Shelfware secrets (postgres + JWT) ──────────────────────────────────────
@@ -303,6 +311,10 @@ resource "kubernetes_namespace" "locust" {
   }
 
   depends_on = [module.aks_loadtest]
+
+  timeouts {
+    delete = "10m"
+  }
 }
 
 # ─── ArgoCD namespace (created here so the bootstrap script can install into it) ─
@@ -314,6 +326,10 @@ resource "kubernetes_namespace" "argocd_app" {
   }
 
   depends_on = [module.aks_app]
+
+  timeouts {
+    delete = "10m"
+  }
 }
 
 resource "kubernetes_namespace" "argocd_loadtest" {
@@ -323,6 +339,10 @@ resource "kubernetes_namespace" "argocd_loadtest" {
   }
 
   depends_on = [module.aks_loadtest]
+
+  timeouts {
+    delete = "10m"
+  }
 }
 
 # ─── ArgoCD repo credential secret ───────────────────────────────────────────
