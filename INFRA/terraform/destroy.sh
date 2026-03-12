@@ -108,17 +108,20 @@ load_tfvars() {
   fi
 
   # Extract the main resource group name and project
-  PROJECT=$(grep -E '^\s*project\s*=' "${SCRIPT_DIR}/terraform.tfvars" | sed 's/.*=\s*"\([^"]*\)".*/\1/')
-  ENVIRONMENT=$(grep -E '^\s*environment\s*=' "${SCRIPT_DIR}/terraform.tfvars" | sed 's/.*=\s*"\([^"]*\)".*/\1/')
+  # Use '|| true' so grep's exit code 1 (no match) doesn't kill the script under set -e
+  PROJECT=$(grep -E '^\s*project\s*=' "${SCRIPT_DIR}/terraform.tfvars" \
+    | head -1 | sed 's/.*=\s*"\([^"]*\)".*/\1/' || true)
+  ENVIRONMENT=$(grep -E '^\s*environment\s*=' "${SCRIPT_DIR}/terraform.tfvars" \
+    | head -1 | sed 's/.*=\s*"\([^"]*\)".*/\1/' || true)
 
   if [ -z "${PROJECT}" ] || [ -z "${ENVIRONMENT}" ]; then
     fail "Could not extract project or environment from terraform.tfvars"
   fi
 
-  # Check for explicit override in tfvars first, otherwise use standard naming
+  # Check for explicit RG override; fall back to standard rg-<project>-<environment>
   local explicit_rg
   explicit_rg=$(grep -E '^\s*azure_resource_group_name\s*=' "${SCRIPT_DIR}/terraform.tfvars" \
-    | sed 's/.*=\s*"\([^"]*\)".*/\1/' | tr -d '[:space:]')
+    | head -1 | sed 's/.*=\s*"\([^"]*\)".*/\1/' | tr -d '[:space:]' || true)
   if [ -n "${explicit_rg}" ]; then
     MAIN_RG="${explicit_rg}"
   else
