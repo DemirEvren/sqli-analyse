@@ -69,7 +69,7 @@ resource "azurerm_storage_account" "tfstate" {
 
   # Security
   min_tls_version           = "TLS1_2"
-  enable_https_traffic_only = true
+  https_traffic_only_enabled = true
 
   # Prevent accidental deletion of state
   blob_properties {

@@ -55,3 +55,6 @@ resource "azurerm_monitor_diagnostic_setting" "acr" {
     enabled  = true
   }
 }
+
+
+// we are only going to use this ACR module if we dont need github packages, so we can disable it by default and only enable it when needed

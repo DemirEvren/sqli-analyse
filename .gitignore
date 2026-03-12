@@ -24,3 +24,13 @@ INFRA/argocd/github-repo-secret.yaml
 output.txt
 scripts/deploy-locust.sh
 scripts/deploy-shelfware.sh
+
+# Terraform — local secrets and generated files, never commit these
+INFRA/terraform/secrets.env
+INFRA/terraform/backend.conf
+INFRA/terraform/kubeconfigs/
+INFRA/terraform/*.tfstate
+INFRA/terraform/*.tfstate.backup
+INFRA/terraform/.terraform/
+INFRA/terraform/destroy.sh
+INFRA/terraform/*-admin-tmp.yaml

@@ -45,14 +45,14 @@ provider "azuread" {
 # `try()` with safe defaults prevents plan-time errors when state is empty.
 
 locals {
-  _app_kube_config = try(module.aks_app.kube_config, {
+  _app_kube_config = try(module.aks_app.kube_admin_config, {
     host                   = ""
     client_certificate     = ""
     client_key             = ""
     cluster_ca_certificate = ""
   })
 
-  _loadtest_kube_config = try(module.aks_loadtest.kube_config, {
+  _loadtest_kube_config = try(module.aks_loadtest.kube_admin_config, {
     host                   = ""
     client_certificate     = ""
     client_key             = ""

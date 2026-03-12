@@ -26,16 +26,16 @@ tags = {
 # AKS — App Cluster
 # Mirrors the k3d setup: 1 server + 2 agents with 8 vCPU / 22.8 GiB each
 app_cluster_name                = "shelfware-app"
-app_cluster_kubernetes_version  = "1.30"
+app_cluster_kubernetes_version  = "1.33"
 app_cluster_system_node_count   = 1
 app_cluster_system_node_vm_size = "Standard_D2s_v3"   # 2 vCPU, 8 GiB  — system pool
-app_cluster_user_node_min       = 2
+app_cluster_user_node_min       = 1
 app_cluster_user_node_max       = 5
-app_cluster_user_node_vm_size   = "Standard_D4s_v3"   # 4 vCPU, 16 GiB — user pool
+app_cluster_user_node_vm_size   = "Standard_B2ms"     # 2 vCPU, 8 GiB — user pool (burstable, cheaper)
 
 # AKS — Loadtest Cluster
 loadtest_cluster_name                = "shelfware-loadtest"
-loadtest_cluster_kubernetes_version  = "1.30"
+loadtest_cluster_kubernetes_version  = "1.33"
 loadtest_cluster_node_count          = 1
 loadtest_cluster_node_vm_size        = "Standard_D2s_v3"
 

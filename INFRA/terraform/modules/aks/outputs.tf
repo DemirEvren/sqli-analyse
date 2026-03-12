@@ -22,6 +22,12 @@ output "kube_config" {
   sensitive   = true
 }
 
+output "kube_admin_config" {
+  description = "Admin kubeconfig — bypasses Azure RBAC, required when azure_rbac_enabled = true."
+  value       = azurerm_kubernetes_cluster.main.kube_admin_config[0]
+  sensitive   = true
+}
+
 output "kubeconfig_path" {
   description = "Path to the written kubeconfig file."
   value       = local_file.kubeconfig.filename
