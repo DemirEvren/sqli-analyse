@@ -32,5 +32,4 @@ INFRA/terraform/kubeconfigs/
 INFRA/terraform/*.tfstate
 INFRA/terraform/*.tfstate.backup
 INFRA/terraform/.terraform/
-INFRA/terraform/destroy.sh
 INFRA/terraform/*-admin-tmp.yaml
