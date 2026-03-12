@@ -7,7 +7,7 @@ resources:
   - helm-manifests.yaml
   - servicemonitor.yaml
   - grafana-dashboard.yaml
-  - ../kepler/kepler-manifests.yaml
+  - kepler-manifests.yaml
 
 labels:
   - includeSelectors: true

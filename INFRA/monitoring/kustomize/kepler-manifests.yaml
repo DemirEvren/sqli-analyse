@@ -1,0 +1,220 @@
+# Kepler — Kubernetes-based Efficient Power Level Exporter
+# CNCF Sandbox project: https://sustainable-computing.io/
+#
+# Kepler reads Linux RAPL (Running Average Power Limit) hardware energy
+# counters and exports them as Prometheus metrics, giving kanalyzer
+# accurate (±5–10%) energy measurements instead of the ±30–50% CCF TDP estimate.
+#
+# Deploy with:
+#   helm repo add kepler https://sustainable-computing-io.github.io/kepler-helm-chart
+#   helm repo update
+#   helm install kepler kepler/kepler \
+#     --namespace monitoring \
+#     --create-namespace \
+#     -f kepler-helm-values.yaml
+#
+# Or with ArgoCD (recommended): apply kepler-app.yaml
+# Or with kubectl: kubectl apply -f kepler-manifests.yaml
+
+# ─── Namespace ────────────────────────────────────────────────────────────────
+# Kepler runs in 'monitoring' alongside kube-prometheus-stack.
+# RBAC below grants the minimal permissions Kepler needs.
+
+---
+# ServiceAccount for Kepler DaemonSet pods
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kepler
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: kepler
+    app.kubernetes.io/component: exporter
+
+---
+# ClusterRole — Kepler needs to read node/pod info to label metrics correctly
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kepler
+  labels:
+    app.kubernetes.io/name: kepler
+rules:
+  - apiGroups: [""]
+    resources: ["nodes/metrics", "nodes/proxy", "nodes/stats"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["nodes", "pods"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kepler
+  labels:
+    app.kubernetes.io/name: kepler
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kepler
+subjects:
+  - kind: ServiceAccount
+    name: kepler
+    namespace: monitoring
+
+---
+# DaemonSet — runs on every node to read RAPL counters
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kepler
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: kepler
+    app.kubernetes.io/component: exporter
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kepler
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kepler
+        app.kubernetes.io/component: exporter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port:   "9102"
+    spec:
+      serviceAccountName: kepler
+      hostNetwork: true       # Required to read host-level energy metrics
+      hostPID: true           # Required for process-level attribution
+      tolerations:
+        # Run on control-plane nodes too — we want energy from all nodes
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: kepler
+          # Pin to a specific release; update to latest stable when upgrading
+          image: quay.io/sustainable_computing_io/kepler:release-0.7.12
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true          # Required for /sys/kernel/debug (RAPL)
+            capabilities:
+              add:
+                - SYS_ADMIN
+          ports:
+            - containerPort: 9102
+              name: metrics
+              protocol: TCP
+          args:
+            - --address=0.0.0.0:9102
+            - --enable-gpu=false       # Set to true if you have NVIDIA GPUs
+            - --enable-cgroup-id=true
+          env:
+            - name: NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            # RAPL energy counters (requires kernel ≥ 3.13, Intel/AMD)
+            - name: sys
+              mountPath: /sys
+              readOnly: true
+            # cgroups v2 for container attribution
+            - name: cgroup
+              mountPath: /sys/fs/cgroup
+              readOnly: true
+            # Kernel debug for additional counters
+            - name: kernel-debug
+              mountPath: /sys/kernel/debug
+            # /proc for process metrics
+            - name: proc
+              mountPath: /proc
+              readOnly: true
+          resources:
+            requests:
+              cpu:    "50m"
+              memory: "64Mi"
+            limits:
+              cpu:    "200m"
+              memory: "256Mi"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 9102
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 9102
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: sys
+          hostPath:
+            path: /sys
+        - name: cgroup
+          hostPath:
+            path: /sys/fs/cgroup
+        - name: kernel-debug
+          hostPath:
+            path: /sys/kernel/debug
+        - name: proc
+          hostPath:
+            path: /proc
+
+---
+# Service for Prometheus scraping
+apiVersion: v1
+kind: Service
+metadata:
+  name: kepler
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: kepler
+    app.kubernetes.io/component: exporter
+spec:
+  selector:
+    app.kubernetes.io/name: kepler
+  ports:
+    - name: metrics
+      port: 9102
+      targetPort: metrics
+      protocol: TCP
+  type: ClusterIP
+
+---
+# ServiceMonitor — tells kube-prometheus-stack to scrape Kepler
+# This requires serviceMonitorSelectorNilUsesHelmValues: false
+# (already set in kube-prometheus-stack-values.yaml)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kepler
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: kepler
+    # This label must match the prometheus.serviceMonitorSelector in kube-prometheus-stack
+    release: monitoring-stack
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kepler
+  namespaceSelector:
+    matchNames:
+      - monitoring
+  endpoints:
+    - port: metrics
+      interval: 30s
+      scrapeTimeout: 10s
+      path: /metrics
