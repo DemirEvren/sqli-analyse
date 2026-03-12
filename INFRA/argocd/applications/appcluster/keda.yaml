@@ -8,9 +8,14 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/DemirEvren/sqli-analyse.git
-    targetRevision: main
-    path: INFRA/keda
+    repoURL: https://kedacore.github.io/charts
+    chart: keda
+    targetRevision: "2.15.0"
+    helm:
+      releaseName: keda
+      values: |
+        crds:
+          install: true
   destination:
     server: https://kubernetes.default.svc
     namespace: keda
