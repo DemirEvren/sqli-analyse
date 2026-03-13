@@ -162,19 +162,88 @@ confirm_destroy() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# NOTE: Finalizer cleanup is no longer needed — Kubernetes provider now has
-# skip_credentials_validation=true so it can delete resources even if clusters
-# are unreachable. Kept as stub for reference in case manual cleanup is ever needed.
-#
-# To manually clean up finalizers if needed (rare):
-#   for ctx in shelfware-app shelfware-loadtest; do
-#     kubectl patch namespace argocd --context $ctx --type merge -p '{"metadata":{"finalizers":[]}}'
-#     kubectl patch namespace prod-shelfware --context $ctx --type merge -p '{"metadata":{"finalizers":[]}}'
-#     kubectl patch namespace test-shelfware --context $ctx --type merge -p '{"metadata":{"finalizers":[]}}'
-#   done
+# NOTE: Kubernetes provider doesn't support skip_credentials_validation.
+# This function handles the credential issues by cleaning up finalizers BEFORE
+# Terraform tries to delete Kubernetes resources. This prevents hangs when
+# deleting namespaces that are stuck in Terminating state.
 #
 remove_argocd_finalizers() {
-  info "Skipping ArgoCD finalizer cleanup (no longer needed — see comment above)"
+  section "Removing finalizers (prevents namespace Terminating hang)"
+
+  local kubeconfig_app="${SCRIPT_DIR}/kubeconfigs/merged-admin.yaml"
+  if [ ! -f "${kubeconfig_app}" ]; then
+    warn "Admin kubeconfig not found — skipping finalizer cleanup"
+    return 0
+  fi
+
+  export KUBECONFIG="${kubeconfig_app}"
+
+  for ctx in shelfware-app shelfware-loadtest; do
+    if ! kubectl cluster-info --context "${ctx}" >/dev/null 2>&1; then
+      warn "${ctx} unreachable — skipping (cluster may already be gone)"
+      continue
+    fi
+
+    info "=== Cleaning up ${ctx} ==="
+
+    # 1. Scale ArgoCD to zero so it stops reconciling / re-adding finalizers
+    kubectl scale deployment -n argocd --all --replicas=0 --context "${ctx}" >/dev/null 2>&1 || true
+    info "  ArgoCD scaled to 0 ✓"
+
+    # 2. Remove finalizers from every ArgoCD Application
+    kubectl get applications -A --context "${ctx}" -o json 2>/dev/null \
+      | python3 -c "
+import json, sys, subprocess
+data = json.load(sys.stdin)
+for app in data.get('items', []):
+    ns   = app['metadata']['namespace']
+    name = app['metadata']['name']
+    subprocess.run(
+        ['kubectl', 'patch', 'application', name, '-n', ns,
+         '--context', '${ctx}', '--type', 'json',
+         '-p', '[{\"op\":\"remove\",\"path\":\"/metadata/finalizers\"}]'],
+        capture_output=True)
+    print(f'    Removed finalizers: {ns}/{name}')
+" 2>/dev/null || true
+
+    # 3. Delete all ArgoCD Applications (now finalizer-free, they delete instantly)
+    kubectl delete applications -A --all --context "${ctx}" --timeout=30s >/dev/null 2>&1 || true
+    info "  ArgoCD Applications deleted ✓"
+
+    # 4. Delete ingress-nginx to release the Azure Load Balancer IP
+    kubectl delete namespace ingress-nginx --context "${ctx}" --timeout=60s >/dev/null 2>&1 || true
+    info "  ingress-nginx namespace deleted ✓"
+
+    # 5. Force-clear finalizers on Terraform-managed namespaces
+    for ns in argocd prod-shelfware test-shelfware locust monitoring keda opencost; do
+      if kubectl get namespace "${ns}" --context "${ctx}" >/dev/null 2>&1; then
+        kubectl patch namespace "${ns}" --context "${ctx}" \
+          --type merge -p '{"metadata":{"finalizers":[]}}' >/dev/null 2>&1 || true
+
+        # Also force-remove finalizers from any stuck resources inside the namespace
+        for resource in ingresses.networking.k8s.io services persistentvolumeclaims; do
+          kubectl get "${resource}" -n "${ns}" --context "${ctx}" -o json 2>/dev/null \
+            | python3 -c "
+import json, sys, subprocess
+data = json.load(sys.stdin)
+for item in data.get('items', []):
+    if item.get('metadata', {}).get('finalizers'):
+        name = item['metadata']['name']
+        subprocess.run(
+            ['kubectl', 'patch', '${resource}', name, '-n', '${ns}',
+             '--context', '${ctx}', '--type', 'merge',
+             '-p', '{\"metadata\":{\"finalizers\":[]}}'],
+            capture_output=True)
+" 2>/dev/null || true
+        done
+        info "  Namespace ${ns} finalizers cleared ✓"
+      fi
+    done
+
+    info "Cleanup complete on ${ctx} ✓"
+  done
+
+  log "All finalizers removed ✓"
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
