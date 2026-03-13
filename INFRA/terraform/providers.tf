@@ -66,6 +66,8 @@ provider "kubernetes" {
   client_certificate     = local._app_kube_config.client_certificate != "" ? base64decode(local._app_kube_config.client_certificate) : ""
   client_key             = local._app_kube_config.client_key != "" ? base64decode(local._app_kube_config.client_key) : ""
   cluster_ca_certificate = local._app_kube_config.cluster_ca_certificate != "" ? base64decode(local._app_kube_config.cluster_ca_certificate) : ""
+  skip_credentials_validation = true
+  skip_provider_registration  = true
 }
 
 provider "kubernetes" {
@@ -74,6 +76,8 @@ provider "kubernetes" {
   client_certificate     = local._loadtest_kube_config.client_certificate != "" ? base64decode(local._loadtest_kube_config.client_certificate) : ""
   client_key             = local._loadtest_kube_config.client_key != "" ? base64decode(local._loadtest_kube_config.client_key) : ""
   cluster_ca_certificate = local._loadtest_kube_config.cluster_ca_certificate != "" ? base64decode(local._loadtest_kube_config.cluster_ca_certificate) : ""
+  skip_credentials_validation = true
+  skip_provider_registration  = true
 }
 
 provider "helm" {
