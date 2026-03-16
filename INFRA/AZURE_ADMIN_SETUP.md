@@ -2,87 +2,39 @@
 
 This document describes the **one-time setup** that the Azure subscription admin must perform before deployment engineers can use Terraform to deploy Shelfware.
 
-## Who needs what?
+## Overview
 
-### Azure Subscription Admin
-The person who owns/manages the Azure subscription and can assign roles at the subscription level.
+The deployment engineer has limited permissions (by design):
+- ✅ Can create/manage VNets, AKS, monitoring, storage
+- ❌ Cannot create role assignments (that requires higher privilege)
 
-### Deployment Engineer
-The person who runs `terraform apply` to deploy infrastructure (typically a DevOps engineer or SRE).
-
----
-
-## Step 1: Grant the Deployment Engineer Required Roles
-
-The deployment engineer needs to be granted **3 roles** at the **subscription level** (not resource group level):
-
-### Role 1: User Access Administrator (or Owner)
-**Why**: To create role assignments (RBAC) for AKS kubelet identities.
-
-```bash
-# Azure CLI command (run as subscription admin):
-az role assignment create \
-  --role "User Access Administrator" \
-  --assignee <deployment-engineer-email-or-object-id> \
-  --scope /subscriptions/<subscription-id>
-```
-
-**Alternative**: Grant "Owner" role instead (but more powerful — only if needed):
-```bash
-az role assignment create \
-  --role "Owner" \
-  --assignee <deployment-engineer-email-or-object-id> \
-  --scope /subscriptions/<subscription-id>
-```
-
-### Role 2: Network Contributor
-**Why**: To create VNets, subnets, NAT gateways, NSGs.
-
-```bash
-az role assignment create \
-  --role "Network Contributor" \
-  --assignee <deployment-engineer-email-or-object-id> \
-  --scope /subscriptions/<subscription-id>
-```
-
-### Role 3: AKS Contributor Role
-**Why**: To create/manage AKS clusters.
-
-```bash
-az role assignment create \
-  --role "Azure Kubernetes Service Contributor Role" \
-  --assignee <deployment-engineer-email-or-object-id> \
-  --scope /subscriptions/<subscription-id>
-```
-
-### Role 4: Log Analytics Contributor (optional but recommended)
-**Why**: To create and manage Log Analytics workspaces.
-
-```bash
-az role assignment create \
-  --role "Log Analytics Contributor" \
-  --assignee <deployment-engineer-email-or-object-id> \
-  --scope /subscriptions/<subscription-id>
-```
-
-### Role 5: Monitoring Contributor (optional but recommended)
-**Why**: To create diagnostic settings for AKS clusters.
-
-```bash
-az role assignment create \
-  --role "Monitoring Contributor" \
-  --assignee <deployment-engineer-email-or-object-id> \
-  --scope /subscriptions/<subscription-id>
-```
+Therefore, **Azure admin must create 2 critical role assignments manually**. After that, the engineer can run `terraform apply` independently.
 
 ---
 
-## Step 2: Create Resource Groups (Admin Only)
+## Current Permissions
 
-The admin creates resource groups that will be used by Terraform:
+### Deployment Engineer Already Has (on main-infra RG):
+- ✅ Network Contributor
+- ✅ Azure Kubernetes Service Contributor Role  
+- ✅ Log Analytics Contributor
+- ✅ Monitoring Contributor
+
+### Deployment Engineer Already Has (on tfstate RG):
+- ✅ Storage Account Contributor
+- ✅ Locks Contributor
+
+### Deployment Engineer Does NOT Have:
+- ❌ User Access Administrator (cannot create role assignments)
+
+---
+
+## What Azure Admin Needs to Do (One-Time Setup)
+
+### Step 1: Create Resource Groups
 
 ```bash
-# Main resource group (for VNet, AKS clusters, Log Analytics)
+# Main resource group (for VNet, AKS clusters, monitoring)
 az group create \
   --name rg-sqli-main \
   --location westeurope
@@ -93,59 +45,132 @@ az group create \
   --location westeurope
 ```
 
----
+### Step 2: Create the Two Critical Role Assignments
 
-## Step 3: Deployment Engineer Runs Terraform
+**Context**: AKS LoadBalancer services need to provision public IPs. This requires the AKS **kubelet identity** to have **Network Contributor** permission on the subnets. Without it, LoadBalancer IPs stay "pending" forever.
 
-Once roles are granted, the deployment engineer can run:
+Since the deployment engineer cannot create role assignments (insufficient permissions), **you must create them manually**.
+
+#### Step 2a: Get the AKS Cluster IDs (after Terraform creates them)
+
+First, engineer runs `terraform apply`. Then you check:
 
 ```bash
-cd kubernetes-app/INFRA/terraform
-terraform init
-terraform apply
+# List all AKS clusters in the subscription
+az aks list --output table
+
+# You should see:
+# Name             ResourceGroup    Location    
+# shelfware-app    rg-sqli-main     westeurope
 ```
 
-Terraform will automatically:
-1. ✅ Create VNet, subnets, NAT gateway
-2. ✅ Create AKS clusters
-3. ✅ Create role assignments (Network Contributor) for AKS kubelet identities on subnets
-4. ✅ Provision LoadBalancer services with public IPs
-5. ✅ Deploy monitoring stack
+#### Step 2b: Get the Kubelet Identity Object IDs
+
+```bash
+# For the app cluster
+APP_KUBELET_ID=$(az aks show \
+  --resource-group rg-sqli-main \
+  --name shelfware-app \
+  --query "identity.principalId" -o tsv)
+
+echo "App cluster kubelet identity: $APP_KUBELET_ID"
+
+# For the loadtest cluster (if it exists)
+LOADTEST_KUBELET_ID=$(az aks show \
+  --resource-group rg-sqli-main \
+  --name shelfware-loadtest \
+  --query "identity.principalId" -o tsv 2>/dev/null || echo "")
+
+if [ -n "$LOADTEST_KUBELET_ID" ]; then
+  echo "Loadtest cluster kubelet identity: $LOADTEST_KUBELET_ID"
+fi
+```
+
+#### Step 2c: Get Subnet IDs
+
+```bash
+# Get the app subnet ID
+APP_SUBNET_ID=$(az network vnet subnet show \
+  --resource-group rg-sqli-main \
+  --vnet-name sqli-vnet \
+  --name sqli-subnet-app \
+  --query id -o tsv)
+
+echo "App subnet: $APP_SUBNET_ID"
+
+# Get the loadtest subnet ID (if needed)
+LOADTEST_SUBNET_ID=$(az network vnet subnet show \
+  --resource-group rg-sqli-main \
+  --vnet-name sqli-vnet \
+  --name sqli-subnet-loadtest \
+  --query id -o tsv 2>/dev/null || echo "")
+
+if [ -n "$LOADTEST_SUBNET_ID" ]; then
+  echo "Loadtest subnet: $LOADTEST_SUBNET_ID"
+fi
+```
+
+#### Step 2d: Create the Role Assignments
+
+```bash
+# Grant Network Contributor role to app cluster kubelet on app subnet
+az role assignment create \
+  --assignee $APP_KUBELET_ID \
+  --role "Network Contributor" \
+  --scope $APP_SUBNET_ID
+
+echo "✅ Created role assignment for app cluster"
+
+# Grant Network Contributor to loadtest cluster (if it exists)
+if [ -n "$LOADTEST_KUBELET_ID" ] && [ -n "$LOADTEST_SUBNET_ID" ]; then
+  az role assignment create \
+    --assignee $LOADTEST_KUBELET_ID \
+    --role "Network Contributor" \
+    --scope $LOADTEST_SUBNET_ID
+  
+  echo "✅ Created role assignment for loadtest cluster"
+fi
+```
 
 ---
 
-## Why the Role Assignments Are Needed
+## Complete Step-by-Step Process
 
-### The Problem
-When an AKS LoadBalancer service is created, Kubernetes asks the underlying Azure cloud provider to provision a public IP and attach it to a network interface. This requires:
+| When | Who | What |
+|------|-----|------|
+| **Once** | Admin | Run Step 1: Create resource groups |
+| **Iteration 1** | Engineer | Run `terraform apply` |
+| **Once** | Admin | Run Steps 2a-2d: Create role assignments |
+| **From now on** | Engineer | Run `terraform apply` whenever needed (no admin involvement) |
 
-```
-AKS Kubelet Identity → Network Contributor role on Subnet
-```
+---
 
-Without this permission, Azure returns a `403 Forbidden` error, and the LoadBalancer IP remains "pending" forever.
+## Why This Approach?
 
-### The Solution
-Terraform now creates these role assignments automatically in `main.tf`:
+### Alternative 1: Grant engineer User Access Administrator
+❌ Too risky — allows unrestricted role assignment across the subscription
+❌ Violates principle of least privilege
 
-```hcl
-resource "azurerm_role_assignment" "aks_app_network_contributor" {
-  scope              = module.networking.subnet_app_id
-  role_definition_id = local.network_contributor_role_id
-  principal_id       = module.aks_app.kubelet_identity_object_id
-}
-```
+### Alternative 2: Have admin create role assignments each time
+❌ Not scalable — admin must manually intervene on every `terraform apply`
 
-This means:
-- ✅ **Permanent**: The role assignment is declarative, so it's recreated on every `terraform apply`
-- ✅ **Automatic**: No manual Azure CLI commands needed after the first setup
-- ✅ **Fresh Deploys**: Works on fresh teardown/redeploy cycles
+### This Approach (Admin creates once, Engineer applies many times)
+✅ Secure — engineer has only necessary permissions
+✅ Scalable — terraform can run independently after one-time setup
+✅ Efficient — admin effort is minimal and one-time
 
 ---
 
 ## Verification
 
-After `terraform apply` completes, verify the LoadBalancer IP is provisioned:
+After admin creates the role assignments, engineer runs:
+
+```bash
+cd kubernetes-app/INFRA/terraform
+terraform apply
+```
+
+Then verify LoadBalancer is provisioned:
 
 ```bash
 export KUBECONFIG=kubernetes-app/INFRA/terraform/kubeconfigs/merged-admin.yaml
@@ -156,51 +181,43 @@ kubectl get svc ingress-nginx-controller -n ingress-nginx \
   -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
 ```
 
-If it still shows `<pending>`, check the service events:
+If it's still pending after 5 minutes, check:
 
 ```bash
 kubectl describe svc ingress-nginx-controller -n ingress-nginx \
-  --context shelfware-app-admin | grep -A 10 Events:
+  --context shelfware-app-admin | grep -A 10 "Events:"
 ```
 
-If you see `LinkedAuthorizationFailed`, the role assignments weren't created (likely because the deployer doesn't have `User Access Administrator` role).
+If you see `LinkedAuthorizationFailed`, the role assignment wasn't created successfully.
 
 ---
 
 ## Troubleshooting
 
-### Error: "insufficient privileges" when creating role assignments
+### "LinkedAuthorizationFailed" error
 
-**Cause**: Deployment engineer doesn't have `User Access Administrator` role.
+**Cause**: Role assignment wasn't created or is incorrect.
 
-**Fix**: Ask Azure admin to run:
-```bash
-az role assignment create \
-  --role "User Access Administrator" \
-  --assignee <deployment-engineer-email> \
-  --scope /subscriptions/<subscription-id>
-```
+**Fix**: 
+1. Verify the kubelet identity object ID is correct
+2. Verify the subnet ID is correct
+3. Re-run the `az role assignment create` commands
 
-### Error: "resource group not found"
+### "Principal not found"
 
-**Cause**: Admin didn't create the resource groups.
+**Cause**: The AKS cluster hasn't been fully provisioned yet.
 
-**Fix**: Admin creates them:
-```bash
-az group create --name rg-sqli-main --location westeurope
-az group create --name rg-sqli-tfstate --location westeurope
-```
+**Fix**: Wait 2-3 minutes after `terraform apply` completes, then run Step 2.
 
 ---
 
-## Summary
+## Reference: Built-in Role IDs
 
-| Step | Who | What |
-|------|-----|------|
-| 1 | Admin | Grant deployment engineer 3+ roles at subscription level |
-| 2 | Admin | Create resource groups (`rg-sqli-main`, `rg-sqli-tfstate`) |
-| 3 | Engineer | Run `terraform apply` |
-| 4 | Engineer | Verify LoadBalancer IP is assigned (not pending) |
+| Role | ID |
+|------|-----|
+| Network Contributor | 4d97b98b-1d4f-4787-a291-c67834d212e7 |
+| User Access Administrator | 18d7d88d-d35e-4fb5-a5c3-7773c20a72d9 |
+| Owner | 8e3af657-a8ff-443c-a75c-2fe8c4bcb635 |
 
-Once this is done, the deployment engineer can run `terraform apply` as many times as they want, and it will **automatically** handle all RBAC setup.
+
 

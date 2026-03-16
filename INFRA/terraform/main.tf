@@ -7,24 +7,24 @@
 #   3. networking (VNet, subnets, NAT)
 #   4. aks_app
 #   5. aks_loadtest
-#   6. RBAC: AKS kubelet identity → subnet role assignments (LoadBalancer provisioning)
-#   7. Kubernetes bootstrap resources (namespaces, secrets, ArgoCD)
+#   6. Kubernetes bootstrap resources (namespaces, secrets, ArgoCD)
+#
+# RBAC ROLE ASSIGNMENTS (created manually by Azure admin, NOT by Terraform):
+#   The deployment engineer cannot create role assignments (lacks User Access Administrator).
+#   Instead, Azure admin creates them once. Terraform applies all other infrastructure.
+#   See INFRA/AZURE_ADMIN_SETUP.md for the exact Azure CLI commands.
 #
 # NOTE: ACR removed — images are pulled from ghcr.io via ghcr-credentials secret.
 #
-# RBAC REQUIRED ROLES (ask Azure admin to assign these to the deployer):
-#   ✓ Owner OR User Access Administrator        — to create role assignments
-#   ✓ Network Contributor                        — VNet/subnets/NSG/NAT/IP
-#   ✓ AKS Contributor Role                      — AKS clusters + node pools
+# REQUIRED DEPLOYER ROLES (on main RG):
+#   ✓ Network Contributor                        — VNet/subnets/NAT/IP
+#   ✓ Azure Kubernetes Service Contributor Role  — AKS clusters + node pools
 #   ✓ Log Analytics Contributor                 — Log Analytics workspace
 #   ✓ Monitoring Contributor                    — Diagnostic Settings
 #
-# WHY THIS MATTERS:
-#   AKS LoadBalancer services need permission to manage network interfaces.
-#   This requires the kubelet identity to have Network Contributor role on subnets.
-#   Without it, LoadBalancer IP remains "pending" forever.
-#   The role assignments below are PERMANENT — they're applied by Terraform on
-#   every `terraform apply`, so they'll be recreated on fresh deployments.
+# REQUIRED DEPLOYER ROLES (on tfstate RG):
+#   ✓ Storage Account Contributor                — Terraform state storage
+#   ✓ Locks Contributor                         — Prevent accidental deletion
 #
 # The resource group itself is NOT created by Terraform. It must be
 # pre-created by your Azure admin. Terraform looks it up via a data source.
@@ -198,33 +198,12 @@ resource "azurerm_monitor_diagnostic_setting" "aks_loadtest" {
   }
 }
 
-# ─── RBAC Role Assignments ───────────────────────────────────────────────────
-# Grant AKS cluster identities permission to join their subnets and manage 
-# network resources (needed for LoadBalancer service provisioning).
-
-data "azurerm_client_config" "current" {}
-
-# Network Contributor role ID (built-in)
-locals {
-  network_contributor_role_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/4d97b98b-1d4f-4787-a291-c67834d212e7"
-}
-
-resource "azurerm_role_assignment" "aks_app_network_contributor" {
-  scope              = module.networking.subnet_app_id
-  role_definition_id = local.network_contributor_role_id
-  principal_id       = module.aks_app.kubelet_identity_object_id
-
-  skip_service_principal_aad_check = true
-}
-
-resource "azurerm_role_assignment" "aks_loadtest_network_contributor" {
-  count              = var.deploy_loadtest_cluster ? 1 : 0
-  scope              = module.networking.subnet_loadtest_id
-  role_definition_id = local.network_contributor_role_id
-  principal_id       = module.aks_loadtest.kubelet_identity_object_id
-
-  skip_service_principal_aad_check = true
-}
+# ─── Note on RBAC Role Assignments ──────────────────────────────────────────
+# AKS kubelet identities need Network Contributor role on their subnets
+# (for LoadBalancer IP provisioning). The deployment engineer cannot create
+# role assignments (lacks User Access Administrator role), so Azure admin
+# creates them manually using the commands in INFRA/AZURE_ADMIN_SETUP.md.
+# See that file for the exact Azure CLI commands to run.
   name                       = "aks-loadtest-diag"
   target_resource_id         = module.aks_loadtest[0].cluster_id
   log_analytics_workspace_id = module.monitoring.log_analytics_workspace_id
