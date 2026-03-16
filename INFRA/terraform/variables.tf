@@ -165,7 +165,13 @@ variable "loadtest_cluster_user_node_vm_size" {
   type        = string
   default     = "Standard_B4ms" # 4 vCPU, 16 GiB — enough for Locust
 }
+# ─── Deployment options ──────────────────────────────────────────────────────
 
+variable "deploy_loadtest_cluster" {
+  description = "Whether to deploy the loadtest cluster. Set to false to only deploy the app cluster."
+  type        = bool
+  default     = false
+}
 # ─── Application secrets (passed through to Kubernetes secrets) ───────────────
 
 variable "postgres_password" {

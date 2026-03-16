@@ -112,12 +112,14 @@ module "aks_app" {
   tags = local.common_tags
 }
 
-# ─── 5. AKS — Loadtest Cluster ───────────────────────────────────────────────
+# ─── 5. AKS — Loadtest Cluster (Optional) ──────────────────────────────────
 # Mirrors the k3d "shelfware-loadtest" cluster:
 #   k3d: 1 server + 2 agents, no loadbalancer, no traefik
 #   AKS: system node (CriticalAddonsOnly) + user node pool for ArgoCD + Locust
+# Set deploy_loadtest_cluster = true to enable, or false to skip.
 
 module "aks_loadtest" {
+  count  = var.deploy_loadtest_cluster ? 1 : 0
   source = "./modules/aks"
 
   cluster_name        = var.loadtest_cluster_name

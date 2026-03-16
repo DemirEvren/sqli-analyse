@@ -3,14 +3,17 @@
 # Full end-to-end deployment: Azure infra + Kubernetes + ArgoCD + Shelfware + Locust.
 #
 # Usage:
-#   bash deploy.sh                          # interactive — prompts for every value
-#   bash deploy.sh --skip-bootstrap         # skip tfstate backend creation (already exists)
-#   bash deploy.sh --skip-images            # skip Docker build/push (images already on ghcr.io)
-#   bash deploy.sh --skip-bootstrap --skip-images
-#   bash deploy.sh --destroy                # tear everything down
+#   bash deploy.sh                                  # interactive — prompts for every value
+#   bash deploy.sh app                              # deploy only app cluster
+#   bash deploy.sh loadtest                         # deploy only loadtest cluster
+#   bash deploy.sh both                             # deploy both clusters (default)
+#   bash deploy.sh --skip-bootstrap                 # skip tfstate backend creation (already exists)
+#   bash deploy.sh --skip-images                    # skip Docker build/push (images already on ghcr.io)
+#   bash deploy.sh app --skip-bootstrap --skip-images
+#   bash deploy.sh --destroy                        # tear everything down
 #
 # All required values can also be pre-set as environment variables to run non-interactively:
-#   AZURE_SUBSCRIPTION_ID, POSTGRES_PASSWORD, JWT_SECRET, GITHUB_TOKEN
+#   AZURE_SUBSCRIPTION_ID, POSTGRES_PASSWORD, JWT_SECRET, GITHUB_TOKEN, DEPLOY_MODE
 #
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
@@ -32,19 +35,30 @@ section() { echo -e "\n${BOLD}${BLUE}══════════════�
             echo -e "${BOLD}${BLUE}══════════════════════════════════════════${RESET}"; }
 ask()     { echo -en "${YELLOW}  ? $* ${RESET}"; }
 
-# ─── Flags ────────────────────────────────────────────────────────────────────
+# ─── Deployment mode ──────────────────────────────────────────────────────────
+DEPLOY_MODE="${DEPLOY_MODE:-both}"  # Default: deploy both clusters
 SKIP_BOOTSTRAP=false
 SKIP_IMAGES=false
 DESTROY=false
 
+# Parse positional argument first (deployment mode)
+if [ $# -gt 0 ] && [[ "$1" =~ ^(app|loadtest|both)$ ]]; then
+  DEPLOY_MODE="$1"
+  shift
+fi
+
+# Parse flags
 for arg in "$@"; do
   case "$arg" in
     --skip-bootstrap) SKIP_BOOTSTRAP=true ;;
     --skip-images)    SKIP_IMAGES=true ;;
     --destroy)        DESTROY=true ;;
-    *) fail "Unknown argument: $arg. Valid flags: --skip-bootstrap, --skip-images, --destroy" ;;
+    *) fail "Unknown argument: $arg. Valid modes: app, loadtest, both. Valid flags: --skip-bootstrap, --skip-images, --destroy" ;;
   esac
 done
+
+log "Deployment mode: $DEPLOY_MODE (app=$([ "$DEPLOY_MODE" = "app" ] || [ "$DEPLOY_MODE" = "both" ] && echo "YES" || echo "NO"), loadtest=$([ "$DEPLOY_MODE" = "loadtest" ] || [ "$DEPLOY_MODE" = "both" ] && echo "YES" || echo "NO"))"
+
 
 # ─── Load secrets from secrets.env if it exists ────────────────────────────────
 if [ -f "${SCRIPT_DIR}/secrets.env" ]; then
@@ -304,24 +318,37 @@ terraform_apply() {
 
   cd "${SCRIPT_DIR}"
 
+  # Build terraform targets based on deployment mode
+  local targets=("-target=module.monitoring" "-target=module.networking" "-target=module.aks_app")
+  
+  if [ "$DEPLOY_MODE" = "both" ] || [ "$DEPLOY_MODE" = "loadtest" ]; then
+    targets+=("-target=module.aks_loadtest")
+  fi
+
   # ── Stage 1: Azure infrastructure ────────────────────────────────────────
   log "Stage 1/2: Creating Azure infrastructure (~15-20 min)..."
-  info "VNet, NAT gateway, Log Analytics, AKS clusters (resource group must already exist)"
+  info "VNet, NAT gateway, Log Analytics, AKS cluster(s)"
+  
+  if [ "$DEPLOY_MODE" = "app" ]; then
+    info "Deploying: App cluster only"
+  elif [ "$DEPLOY_MODE" = "loadtest" ]; then
+    info "Deploying: Loadtest cluster only"
+  else
+    info "Deploying: Both app + loadtest clusters"
+  fi
 
   terraform apply -auto-approve -input=false \
-    -target=module.monitoring \
-    -target=module.networking \
-    -target=module.aks_app \
-    -target=module.aks_loadtest
+    -var="deploy_loadtest_cluster=$([ "$DEPLOY_MODE" = "both" ] || [ "$DEPLOY_MODE" = "loadtest" ] && echo 'true' || echo 'false')" \
+    "${targets[@]}"
 
   log "Stage 1 complete ✓"
 
   # ── Stage 2: Kubernetes resources ────────────────────────────────────────
   log "Stage 2/2: Creating Kubernetes namespaces and secrets (~2 min)..."
-  info "Namespaces: prod-shelfware, test-shelfware, argocd, locust"
-  info "Secrets: postgres-secret, ghcr-credentials, argocd-repo-shelfware"
-
-  terraform apply -auto-approve -input=false
+  info "Namespaces: prod-shelfware, test-shelfware, argocd"
+  
+  terraform apply -auto-approve -input=false \
+    -var="deploy_loadtest_cluster=$([ "$DEPLOY_MODE" = "both" ] || [ "$DEPLOY_MODE" = "loadtest" ] && echo 'true' || echo 'false')"
 
   log "Stage 2 complete ✓"
 }
