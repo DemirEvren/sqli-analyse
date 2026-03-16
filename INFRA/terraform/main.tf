@@ -174,6 +174,50 @@ resource "azurerm_monitor_diagnostic_setting" "aks_app" {
 resource "azurerm_monitor_diagnostic_setting" "aks_loadtest" {
   count                      = var.deploy_loadtest_cluster ? 1 : 0
   name                       = "aks-loadtest-diag"
+  target_resource_id         = module.aks_loadtest.cluster_id
+  log_analytics_workspace_id = module.monitoring.log_analytics_workspace_id
+
+  enabled_log { category = "kube-apiserver" }
+  enabled_log { category = "kube-controller-manager" }
+  enabled_log { category = "kube-scheduler" }
+  enabled_log { category = "kube-audit-admin" }
+  enabled_log { category = "guard" }
+  enabled_log { category = "cluster-autoscaler" }
+
+  metric {
+    category = "AllMetrics"
+    enabled  = true
+  }
+}
+
+# ─── RBAC Role Assignments ───────────────────────────────────────────────────
+# Grant AKS cluster identities permission to join their subnets and manage 
+# network resources (needed for LoadBalancer service provisioning).
+
+data "azurerm_client_config" "current" {}
+
+# Network Contributor role ID (built-in)
+locals {
+  network_contributor_role_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/4d97b98b-1d4f-4787-a291-c67834d212e7"
+}
+
+resource "azurerm_role_assignment" "aks_app_network_contributor" {
+  scope              = module.networking.subnet_app_id
+  role_definition_id = local.network_contributor_role_id
+  principal_id       = module.aks_app.kubelet_identity_object_id
+
+  skip_service_principal_aad_check = true
+}
+
+resource "azurerm_role_assignment" "aks_loadtest_network_contributor" {
+  count              = var.deploy_loadtest_cluster ? 1 : 0
+  scope              = module.networking.subnet_loadtest_id
+  role_definition_id = local.network_contributor_role_id
+  principal_id       = module.aks_loadtest.kubelet_identity_object_id
+
+  skip_service_principal_aad_check = true
+}
+  name                       = "aks-loadtest-diag"
   target_resource_id         = module.aks_loadtest[0].cluster_id
   log_analytics_workspace_id = module.monitoring.log_analytics_workspace_id
 
