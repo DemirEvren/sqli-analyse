@@ -75,23 +75,32 @@ check_prereqs() {
     --file "${kubeconfig_dir}/shelfware-app-admin-tmp.yaml" \
     --overwrite-existing
 
-  log "Fetching admin kubeconfig for ${LOADTEST_CONTEXT}..."
-  az aks get-credentials \
-    --resource-group "${AKS_RESOURCE_GROUP}" \
-    --name "${LOADTEST_CONTEXT}" \
-    --admin \
-    --file "${kubeconfig_dir}/shelfware-loadtest-admin-tmp.yaml" \
-    --overwrite-existing
+  # Check if loadtest cluster exists (optional for app-only deployments)
+  log "Checking if loadtest cluster exists..."
+  if az aks show --resource-group "${AKS_RESOURCE_GROUP}" --name "${LOADTEST_CONTEXT}" &>/dev/null; then
+    log "Fetching admin kubeconfig for ${LOADTEST_CONTEXT}..."
+    az aks get-credentials \
+      --resource-group "${AKS_RESOURCE_GROUP}" \
+      --name "${LOADTEST_CONTEXT}" \
+      --admin \
+      --file "${kubeconfig_dir}/shelfware-loadtest-admin-tmp.yaml" \
+      --overwrite-existing
 
-  # Merge the clean admin-only files (no kubelogin entries)
-  KUBECONFIG="${kubeconfig_dir}/shelfware-app-admin-tmp.yaml:${kubeconfig_dir}/shelfware-loadtest-admin-tmp.yaml" \
-    kubectl config view --flatten > "${kubeconfig_dir}/merged-admin.yaml"
+    # Merge both app and loadtest admin files
+    KUBECONFIG="${kubeconfig_dir}/shelfware-app-admin-tmp.yaml:${kubeconfig_dir}/shelfware-loadtest-admin-tmp.yaml" \
+      kubectl config view --flatten > "${kubeconfig_dir}/merged-admin.yaml"
+    
+    # Rename admin contexts to match the expected context names
+    kubectl config rename-context shelfware-app-admin      shelfware-app      2>/dev/null || true
+    kubectl config rename-context shelfware-loadtest-admin shelfware-loadtest 2>/dev/null || true
+  else
+    log "Loadtest cluster not found (app-only deployment) — skipping loadtest kubeconfig"
+    # Just use app cluster kubeconfig
+    cp "${kubeconfig_dir}/shelfware-app-admin-tmp.yaml" "${kubeconfig_dir}/merged-admin.yaml"
+    kubectl config rename-context shelfware-app-admin shelfware-app 2>/dev/null || true
+  fi
+
   export KUBECONFIG="${kubeconfig_dir}/merged-admin.yaml"
-
-  # Rename admin contexts to match the expected context names used throughout this script
-  kubectl config rename-context shelfware-app-admin      shelfware-app      2>/dev/null || true
-  kubectl config rename-context shelfware-loadtest-admin shelfware-loadtest 2>/dev/null || true
-
   log "Admin kubeconfig: ${KUBECONFIG}"
 }
 
@@ -262,6 +271,12 @@ deploy_app_cluster() {
 
 # ─────────────────────────────────────────────────────────────────────────────
 deploy_loadtest_cluster() {
+  # Check if loadtest cluster exists
+  if ! az aks show --resource-group "${AKS_RESOURCE_GROUP}" --name "${LOADTEST_CONTEXT}" &>/dev/null; then
+    log "Loadtest cluster not found (app-only deployment) — skipping loadtest bootstrap"
+    return 0
+  fi
+
   log "=== LOADTEST CLUSTER: ${LOADTEST_CONTEXT} ==="
 
   # Check for at least one schedulable (untainted) node before proceeding.
