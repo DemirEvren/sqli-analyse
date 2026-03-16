@@ -17,10 +17,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"   # kubernetes-app/
 INFRA_DIR="${REPO_ROOT}/INFRA"
 
-# ─── Cluster context names (must match AKS cluster names) ────────────────────
-APP_CONTEXT="${APP_CLUSTER_NAME:-shelfware-app}"
-LOADTEST_CONTEXT="${LOADTEST_CLUSTER_NAME:-shelfware-loadtest}"
+# ─── Cluster and context names ─────────────────────────────────────────────
+APP_CLUSTER_NAME="${APP_CLUSTER_NAME:-shelfware-app}"
+LOADTEST_CLUSTER_NAME="${LOADTEST_CLUSTER_NAME:-shelfware-loadtest}"
 AKS_RESOURCE_GROUP="${AKS_RESOURCE_GROUP:-rg-sqli-main}"
+
+APP_CONTEXT="${APP_CLUSTER_NAME}-admin"
+LOADTEST_CONTEXT="${LOADTEST_CLUSTER_NAME}-admin"
 
 # ─── Secrets (from environment — NOT hardcoded) ───────────────────────────────
 GITHUB_TOKEN="${GITHUB_TOKEN:?GITHUB_TOKEN env var required}"
@@ -67,21 +70,21 @@ check_prereqs() {
   kubeconfig_dir="$(dirname "${KUBECONFIG}")"
   mkdir -p "${kubeconfig_dir}"
 
-  log "Fetching admin kubeconfig for ${APP_CONTEXT}..."
+  log "Fetching admin kubeconfig for ${APP_CLUSTER_NAME}..."
   az aks get-credentials \
     --resource-group "${AKS_RESOURCE_GROUP}" \
-    --name "${APP_CONTEXT}" \
+    --name "${APP_CLUSTER_NAME}" \
     --admin \
     --file "${kubeconfig_dir}/shelfware-app-admin-tmp.yaml" \
     --overwrite-existing
 
   # Check if loadtest cluster exists (optional for app-only deployments)
   log "Checking if loadtest cluster exists..."
-  if az aks show --resource-group "${AKS_RESOURCE_GROUP}" --name "${LOADTEST_CONTEXT}" &>/dev/null; then
-    log "Fetching admin kubeconfig for ${LOADTEST_CONTEXT}..."
+  if az aks show --resource-group "${AKS_RESOURCE_GROUP}" --name "${LOADTEST_CLUSTER_NAME}" &>/dev/null; then
+    log "Fetching admin kubeconfig for ${LOADTEST_CLUSTER_NAME}..."
     az aks get-credentials \
       --resource-group "${AKS_RESOURCE_GROUP}" \
-      --name "${LOADTEST_CONTEXT}" \
+      --name "${LOADTEST_CLUSTER_NAME}" \
       --admin \
       --file "${kubeconfig_dir}/shelfware-loadtest-admin-tmp.yaml" \
       --overwrite-existing
@@ -89,23 +92,15 @@ check_prereqs() {
     # Merge both app and loadtest admin files
     KUBECONFIG="${kubeconfig_dir}/shelfware-app-admin-tmp.yaml:${kubeconfig_dir}/shelfware-loadtest-admin-tmp.yaml" \
       kubectl config view --flatten > "${kubeconfig_dir}/merged-admin.yaml"
-    
-    # Rename admin contexts to match the expected context names
-    kubectl config rename-context shelfware-app-admin      shelfware-app      2>/dev/null || true
-    kubectl config rename-context shelfware-loadtest-admin shelfware-loadtest 2>/dev/null || true
   else
     log "Loadtest cluster not found (app-only deployment) — skipping loadtest kubeconfig"
     # Just use app cluster kubeconfig
     cp "${kubeconfig_dir}/shelfware-app-admin-tmp.yaml" "${kubeconfig_dir}/merged-admin.yaml"
-    kubectl config rename-context shelfware-app-admin shelfware-app 2>/dev/null || true
   fi
 
   export KUBECONFIG="${kubeconfig_dir}/merged-admin.yaml"
   log "Admin kubeconfig: ${KUBECONFIG}"
-  
-  # Use the actual context names that exist after renaming
-  APP_CONTEXT="shelfware-app"
-  LOADTEST_CONTEXT="shelfware-loadtest"
+  log "Using kubectl contexts: ${APP_CONTEXT} / ${LOADTEST_CONTEXT}"
 }
 
 wait_for_deployment() {
@@ -276,7 +271,7 @@ deploy_app_cluster() {
 # ─────────────────────────────────────────────────────────────────────────────
 deploy_loadtest_cluster() {
   # Check if loadtest cluster exists
-  if ! az aks show --resource-group "${AKS_RESOURCE_GROUP}" --name "${LOADTEST_CONTEXT}" &>/dev/null; then
+  if ! az aks show --resource-group "${AKS_RESOURCE_GROUP}" --name "${LOADTEST_CLUSTER_NAME}" &>/dev/null; then
     log "Loadtest cluster not found (app-only deployment) — skipping loadtest bootstrap"
     return 0
   fi
