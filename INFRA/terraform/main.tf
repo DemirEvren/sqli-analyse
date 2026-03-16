@@ -371,10 +371,11 @@ resource "kubernetes_secret" "argocd_repo_app" {
 }
 
 resource "kubernetes_secret" "argocd_repo_loadtest" {
+  count    = var.deploy_loadtest_cluster ? 1 : 0
   provider = kubernetes.loadtest
   metadata {
     name      = "argocd-repo-shelfware"
-    namespace = kubernetes_namespace.argocd_loadtest.metadata[0].name
+    namespace = kubernetes_namespace.argocd_loadtest[0].metadata[0].name
     labels = {
       "argocd.argoproj.io/secret-type" = "repository"
     }
