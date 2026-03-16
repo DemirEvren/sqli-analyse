@@ -318,6 +318,16 @@ terraform_apply() {
 
   cd "${SCRIPT_DIR}"
 
+  # Clean up old loadtest resources from state if deploying app-only
+  # (they have moved from no-count to count syntax)
+  if [ "$DEPLOY_MODE" = "app" ]; then
+    info "Removing old loadtest resources from state..."
+    terraform state rm "azurerm_monitor_diagnostic_setting.aks_loadtest" 2>/dev/null || true
+    terraform state rm "kubernetes_namespace.argocd_loadtest" 2>/dev/null || true
+    terraform state rm "kubernetes_namespace.locust" 2>/dev/null || true
+    terraform state rm "kubernetes_secret.argocd_repo_loadtest" 2>/dev/null || true
+  fi
+
   # Build terraform targets based on deployment mode
   local targets=("-target=module.monitoring" "-target=module.networking" "-target=module.aks_app")
   
