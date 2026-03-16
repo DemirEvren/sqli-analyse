@@ -34,12 +34,16 @@ ask()     { echo -en "${YELLOW}  ? $* ${RESET}"; }
 # ─── Flags ────────────────────────────────────────────────────────────────────
 FORCE=false
 ALSO_DESTROY_BACKEND=false
+DEPLOY_MODE="both"  # Default: assume both clusters were deployed
 
 for arg in "$@"; do
   case "$arg" in
     --force)                   FORCE=true ;;
     --also-destroy-backend)    ALSO_DESTROY_BACKEND=true ;;
-    *) fail "Unknown argument: $arg. Valid flags: --force, --also-destroy-backend" ;;
+    app)                       DEPLOY_MODE="app" ;;
+    loadtest)                  DEPLOY_MODE="loadtest" ;;
+    both)                      DEPLOY_MODE="both" ;;
+    *) fail "Unknown argument: $arg. Valid modes: app, loadtest, both. Valid flags: --force, --also-destroy-backend" ;;
   esac
 done
 
@@ -266,9 +270,12 @@ destroy_main() {
 
   section "Destroying main infrastructure"
   info "Running: terraform destroy -auto-approve"
+  info "Deployment mode: $DEPLOY_MODE"
   echo ""
 
-  terraform destroy -auto-approve || fail "Terraform destroy failed"
+  terraform destroy -auto-approve \
+    -var="deploy_loadtest_cluster=$([ "$DEPLOY_MODE" = "both" ] || [ "$DEPLOY_MODE" = "loadtest" ] && echo 'true' || echo 'false')" \
+    || fail "Terraform destroy failed"
 
   log "Main infrastructure destroyed ✓"
 }
