@@ -102,6 +102,10 @@ check_prereqs() {
 
   export KUBECONFIG="${kubeconfig_dir}/merged-admin.yaml"
   log "Admin kubeconfig: ${KUBECONFIG}"
+  
+  # Use the actual context names that exist after renaming
+  APP_CONTEXT="shelfware-app"
+  LOADTEST_CONTEXT="shelfware-loadtest"
 }
 
 wait_for_deployment() {
