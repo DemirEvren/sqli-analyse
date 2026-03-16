@@ -172,8 +172,9 @@ resource "azurerm_monitor_diagnostic_setting" "aks_app" {
 }
 
 resource "azurerm_monitor_diagnostic_setting" "aks_loadtest" {
+  count                      = var.deploy_loadtest_cluster ? 1 : 0
   name                       = "aks-loadtest-diag"
-  target_resource_id         = module.aks_loadtest.cluster_id
+  target_resource_id         = module.aks_loadtest[0].cluster_id
   log_analytics_workspace_id = module.monitoring.log_analytics_workspace_id
 
   enabled_log { category = "kube-apiserver" }
@@ -391,7 +392,7 @@ resource "kubernetes_secret" "argocd_repo_loadtest" {
 resource "null_resource" "merge_kubeconfig" {
   triggers = {
     app_cluster_id      = module.aks_app.cluster_id
-    loadtest_cluster_id = module.aks_loadtest.cluster_id
+    loadtest_cluster_id = var.deploy_loadtest_cluster ? module.aks_loadtest[0].cluster_id : ""
   }
 
   provisioner "local-exec" {
@@ -400,8 +401,13 @@ resource "null_resource" "merge_kubeconfig" {
       mkdir -p "${path.root}/kubeconfigs"
 
       echo "Merging kubeconfigs..."
+      %{if var.deploy_loadtest_cluster~}
       KUBECONFIG="${path.root}/kubeconfigs/${var.app_cluster_name}.yaml:${path.root}/kubeconfigs/${var.loadtest_cluster_name}.yaml" \
         kubectl config view --flatten > "${path.root}/kubeconfigs/merged.yaml"
+      %{else~}
+      KUBECONFIG="${path.root}/kubeconfigs/${var.app_cluster_name}.yaml" \
+        kubectl config view --flatten > "${path.root}/kubeconfigs/merged.yaml"
+      %{endif~}
 
       echo ""
       echo "=== Available contexts ==="

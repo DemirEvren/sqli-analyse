@@ -36,8 +36,6 @@ app_cluster_user_node_vm_size   = "Standard_B2ms"     # 2 vCPU, 8 GiB — user p
 # AKS — Loadtest Cluster
 loadtest_cluster_name                = "shelfware-loadtest"
 loadtest_cluster_kubernetes_version  = "1.33"
-loadtest_cluster_node_count          = 1
-loadtest_cluster_node_vm_size        = "Standard_D2s_v3"
 
 # Monitoring
 log_analytics_retention_days = 30

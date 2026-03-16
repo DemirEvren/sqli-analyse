@@ -19,15 +19,15 @@ output "app_cluster_kubeconfig_path" {
 }
 
 output "loadtest_cluster_name" {
-  value = module.aks_loadtest.cluster_name
+  value = var.deploy_loadtest_cluster ? module.aks_loadtest[0].cluster_name : null
 }
 
 output "loadtest_cluster_fqdn" {
-  value = module.aks_loadtest.cluster_fqdn
+  value = var.deploy_loadtest_cluster ? module.aks_loadtest[0].cluster_fqdn : null
 }
 
 output "loadtest_cluster_kubeconfig_path" {
-  value = module.aks_loadtest.kubeconfig_path
+  value = var.deploy_loadtest_cluster ? module.aks_loadtest[0].kubeconfig_path : null
 }
 
 output "merged_kubeconfig_path" {
