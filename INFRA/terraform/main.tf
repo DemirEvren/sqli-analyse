@@ -128,13 +128,13 @@ module "aks_loadtest" {
 
   subnet_id = module.networking.subnet_loadtest_id
 
-  system_node_count   = var.loadtest_cluster_node_count
-  system_node_vm_size = var.loadtest_cluster_node_vm_size
+  system_node_count   = var.loadtest_cluster_system_node_count
+  system_node_vm_size = var.loadtest_cluster_system_node_vm_size
 
-  # Smaller user pool — quota in West Europe is limited (4 vCPUs free)
-  # Standard_D2s_v3 = 2 vCPUs × 1 node = 2 vCPUs (well within quota)
-  user_node_vm_size = "Standard_D2s_v3"
-  user_node_min     = 1
+  # Smaller user pool — quota in West Europe is limited
+  # Standard_B4ms = 4 vCPUs × 1 node = 4 vCPUs (vs 8 vCPUs with D4s_v3)
+  user_node_vm_size = var.loadtest_cluster_user_node_vm_size
+  user_node_min     = var.loadtest_cluster_user_node_count
   user_node_max     = 2
 
   # Different service CIDR to avoid overlap when both kubeconfigs are merged

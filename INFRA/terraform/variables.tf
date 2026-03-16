@@ -46,6 +46,12 @@ variable "azure_location" {
   default     = "westeurope"
 }
 
+variable "azure_location_secondary" {
+  description = "Secondary Azure region for cross-region replication (optional)."
+  type        = string
+  default     = ""
+}
+
 variable "azure_resource_group_name" {
   description = "Name of the pre-created Azure resource group. Must exist before running Terraform. Leave empty to use auto-generated name 'rg-<project>-<environment>' (the admin must still pre-create it)."
   type        = string
@@ -87,15 +93,15 @@ variable "app_cluster_name" {
 }
 
 variable "app_cluster_kubernetes_version" {
-  description = "Kubernetes version for the app cluster. Use 'latest' or a specific version like '1.30'."
+  description = "Kubernetes version for the app cluster. Use 'latest' or a specific version like '1.33'."
   type        = string
-  default     = "1.30"
+  default     = "1.33"
 }
 
 variable "app_cluster_system_node_count" {
-  description = "Number of nodes in the system node pool (coreDNS, konnectivity, etc.)."
+  description = "Number of nodes in the system node pool (coreDNS, konnectivity, etc.). Minimum 3 for HA per Azure best practices."
   type        = number
-  default     = 1
+  default     = 3
 }
 
 variable "app_cluster_system_node_vm_size" {
@@ -136,16 +142,28 @@ variable "loadtest_cluster_kubernetes_version" {
   default     = "1.30"
 }
 
-variable "loadtest_cluster_node_count" {
-  description = "Number of nodes in the loadtest cluster node pool."
+variable "loadtest_cluster_system_node_count" {
+  description = "Number of system nodes in the loadtest cluster (use smaller VMs to save quota)."
   type        = number
   default     = 1
 }
 
-variable "loadtest_cluster_node_vm_size" {
-  description = "VM size for the loadtest cluster node pool."
+variable "loadtest_cluster_system_node_vm_size" {
+  description = "VM size for loadtest system node pool (B-series to save quota)."
   type        = string
-  default     = "Standard_D2s_v3"
+  default     = "Standard_B2s" # 1 vCPU, 4 GiB — sufficient for system pods
+}
+
+variable "loadtest_cluster_user_node_count" {
+  description = "Number of user nodes in the loadtest cluster."
+  type        = number
+  default     = 1
+}
+
+variable "loadtest_cluster_user_node_vm_size" {
+  description = "VM size for loadtest user node pool (B-series to save quota)."
+  type        = string
+  default     = "Standard_B4ms" # 4 vCPU, 16 GiB — enough for Locust
 }
 
 # ─── Application secrets (passed through to Kubernetes secrets) ───────────────
