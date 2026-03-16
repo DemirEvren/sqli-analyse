@@ -302,9 +302,10 @@ resource "kubernetes_secret" "ghcr_test" {
   }
 }
 
-# ─── 7. Kubernetes Bootstrap — Loadtest Cluster ───────────────────────────────
+# ─── 7. Kubernetes Bootstrap — Loadtest Cluster (Optional) ──────────────────
 
 resource "kubernetes_namespace" "locust" {
+  count    = var.deploy_loadtest_cluster ? 1 : 0
   provider = kubernetes.loadtest
   metadata {
     name = "locust"
@@ -336,6 +337,7 @@ resource "kubernetes_namespace" "argocd_app" {
 }
 
 resource "kubernetes_namespace" "argocd_loadtest" {
+  count    = var.deploy_loadtest_cluster ? 1 : 0
   provider = kubernetes.loadtest
   metadata {
     name = "argocd"
