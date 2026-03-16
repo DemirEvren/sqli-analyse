@@ -7,16 +7,24 @@
 #   3. networking (VNet, subnets, NAT)
 #   4. aks_app
 #   5. aks_loadtest
-#   6. Kubernetes bootstrap resources (namespaces, secrets, ArgoCD)
+#   6. RBAC: AKS kubelet identity → subnet role assignments (LoadBalancer provisioning)
+#   7. Kubernetes bootstrap resources (namespaces, secrets, ArgoCD)
 #
 # NOTE: ACR removed — images are pulled from ghcr.io via ghcr-credentials secret.
-#       This eliminates all azurerm_role_assignment resources.
 #
-# RBAC: The deployer needs the following built-in roles on the main RG:
-#   • Network Contributor          (4d97b98b-…) — VNet/subnets/NSG/NAT/IP
-#   • AKS Contributor Role         (ed7f3fbd-…) — AKS clusters + node pools
-#   • Log Analytics Contributor    (92aaf0da-…) — Log Analytics workspace
-#   • Monitoring Contributor        (749f88d5-…) — Diagnostic Settings
+# RBAC REQUIRED ROLES (ask Azure admin to assign these to the deployer):
+#   ✓ Owner OR User Access Administrator        — to create role assignments
+#   ✓ Network Contributor                        — VNet/subnets/NSG/NAT/IP
+#   ✓ AKS Contributor Role                      — AKS clusters + node pools
+#   ✓ Log Analytics Contributor                 — Log Analytics workspace
+#   ✓ Monitoring Contributor                    — Diagnostic Settings
+#
+# WHY THIS MATTERS:
+#   AKS LoadBalancer services need permission to manage network interfaces.
+#   This requires the kubelet identity to have Network Contributor role on subnets.
+#   Without it, LoadBalancer IP remains "pending" forever.
+#   The role assignments below are PERMANENT — they're applied by Terraform on
+#   every `terraform apply`, so they'll be recreated on fresh deployments.
 #
 # The resource group itself is NOT created by Terraform. It must be
 # pre-created by your Azure admin. Terraform looks it up via a data source.
