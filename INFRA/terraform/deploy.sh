@@ -390,6 +390,9 @@ run_bootstrap() {
 
   export GITHUB_USERNAME="${GITHUB_USERNAME:-DemirEvren}"
   export GITHUB_REPO_URL="${GITHUB_REPO_URL:-https://github.com/DemirEvren/sqli-analyse.git}"
+  export GITHUB_TOKEN
+  export POSTGRES_PASSWORD
+  export JWT_SECRET
 
   cd "${SCRIPT_DIR}"
   bash bootstrap-aks.sh
