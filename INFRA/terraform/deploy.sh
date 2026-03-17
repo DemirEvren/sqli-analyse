@@ -268,6 +268,32 @@ terraform_init() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+import_existing_resources() {
+  section "Checking for orphaned Azure resources"
+
+  cd "${SCRIPT_DIR}"
+
+  # Check if diagnostic settings exist in Azure but not in Terraform state
+  # This happens when you delete local state but resources remain in Azure
+  info "Importing existing diagnostic settings (if any)..."
+
+  # App cluster diagnostic setting
+  if ! terraform state show azurerm_monitor_diagnostic_setting.aks_app >/dev/null 2>&1; then
+    local diag_id="/subscriptions/$(az account show --query id -o tsv)/resourceGroups/rg-sqli-main/providers/Microsoft.ContainerService/managedClusters/shelfware-app/providers/Microsoft.Insights/diagnosticSettings/aks-app-diag"
+    
+    if az monitor diagnostic-settings show \
+         --name aks-app-diag \
+         --resource "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/rg-sqli-main/providers/Microsoft.ContainerService/managedClusters/shelfware-app" \
+         >/dev/null 2>&1; then
+      info "Found orphaned diagnostic setting — importing into state..."
+      terraform import azurerm_monitor_diagnostic_setting.aks_app "$diag_id" 2>/dev/null || true
+    fi
+  fi
+
+  info "Resource import check complete ✓"
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 push_images() {
   section "Step 4 — Checking / building Docker images"
 
@@ -503,6 +529,7 @@ main() {
   setup_tfvars
   bootstrap_tfstate
   terraform_init
+  import_existing_resources
   push_images
   terraform_apply
   export_kubeconfig
