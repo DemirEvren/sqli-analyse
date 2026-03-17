@@ -216,6 +216,13 @@ resource "azurerm_monitor_diagnostic_setting" "aks_loadtest" {
 # (via kustomize), NOT by Terraform. Terraform managing these resources causes
 # destroy to hang indefinitely waiting for finalizers to clear.
 #
+# If you have old Kubernetes resources in the state file, remove them with:
+#   terraform state rm kubernetes_namespace.argocd_app \
+#     kubernetes_namespace.prod_shelfware kubernetes_namespace.test_shelfware \
+#     kubernetes_secret.argocd_repo_app kubernetes_secret.postgres_prod \
+#     kubernetes_secret.postgres_test kubernetes_secret.ghcr_prod \
+#     kubernetes_secret.ghcr_test
+#
 # If you need to recreate these resources, run bootstrap-aks.sh instead.
 # Terraform only manages Azure infrastructure (AKS clusters, VNet, etc.).
 

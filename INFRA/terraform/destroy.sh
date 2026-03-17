@@ -237,6 +237,26 @@ destroy_main() {
     || fail "terraform init failed — check backend.conf and Azure credentials"
   log "Terraform init ✓"
 
+  # Remove any Kubernetes resources from state to prevent destroy hangs
+  # (they're now managed by bootstrap-aks.sh, not Terraform)
+  section "Removing Kubernetes resources from state (prevents finalizer hangs)"
+  
+  for resource in \
+    'kubernetes_namespace.argocd_app' \
+    'kubernetes_namespace.prod_shelfware' \
+    'kubernetes_namespace.test_shelfware' \
+    'kubernetes_namespace.locust' \
+    'kubernetes_namespace.argocd_loadtest' \
+    'kubernetes_secret.argocd_repo_app' \
+    'kubernetes_secret.argocd_repo_loadtest' \
+    'kubernetes_secret.postgres_prod' \
+    'kubernetes_secret.postgres_test' \
+    'kubernetes_secret.ghcr_prod' \
+    'kubernetes_secret.ghcr_test'; do
+    terraform state rm "$resource" 2>/dev/null || true
+  done
+  info "Kubernetes resources removed from state ✓"
+
   section "Destroying main infrastructure"
   info "Running: terraform destroy -auto-approve"
   info "Deployment mode: $DEPLOY_MODE"
