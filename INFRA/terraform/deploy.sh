@@ -369,6 +369,35 @@ terraform_apply() {
 
   log "Stage 1 complete ✓"
 
+  # Import diagnostic settings that may be auto-created by Azure Policy
+  # between Stage 1 and Stage 2 (prevents "already exists" failures).
+  info "Checking AKS diagnostic settings created outside Terraform..."
+  local sub_id
+  sub_id="$(az account show --query id -o tsv 2>/dev/null || true)"
+  if [ -n "${sub_id}" ]; then
+    local app_cluster_id="/subscriptions/${sub_id}/resourceGroups/rg-sqli-main/providers/Microsoft.ContainerService/managedClusters/shelfware-app"
+    local app_diag_id="${app_cluster_id}|aks-app-diag"
+
+    if ! terraform state show azurerm_monitor_diagnostic_setting.aks_app >/dev/null 2>&1; then
+      if az monitor diagnostic-settings show --name aks-app-diag --resource "${app_cluster_id}" >/dev/null 2>&1; then
+        info "Importing existing aks-app-diag into Terraform state..."
+        terraform import azurerm_monitor_diagnostic_setting.aks_app "${app_diag_id}" >/dev/null 2>&1 || true
+      fi
+    fi
+
+    if [ "$DEPLOY_MODE" = "both" ] || [ "$DEPLOY_MODE" = "loadtest" ]; then
+      local lt_cluster_id="/subscriptions/${sub_id}/resourceGroups/rg-sqli-main/providers/Microsoft.ContainerService/managedClusters/shelfware-loadtest"
+      local lt_diag_id="${lt_cluster_id}|aks-loadtest-diag"
+
+      if ! terraform state show 'azurerm_monitor_diagnostic_setting.aks_loadtest[0]' >/dev/null 2>&1; then
+        if az monitor diagnostic-settings show --name aks-loadtest-diag --resource "${lt_cluster_id}" >/dev/null 2>&1; then
+          info "Importing existing aks-loadtest-diag into Terraform state..."
+          terraform import 'azurerm_monitor_diagnostic_setting.aks_loadtest[0]' "${lt_diag_id}" >/dev/null 2>&1 || true
+        fi
+      fi
+    fi
+  fi
+
   # ── Stage 2: Kubernetes resources ────────────────────────────────────────
   log "Stage 2/2: Creating Kubernetes namespaces and secrets (~2 min)..."
   info "Namespaces: prod-shelfware, test-shelfware, argocd"
