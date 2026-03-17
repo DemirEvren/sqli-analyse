@@ -237,6 +237,17 @@ destroy_main() {
     || fail "terraform init failed — check backend.conf and Azure credentials"
   log "Terraform init ✓"
 
+  # Remove any stale state locks
+  section "Removing stale state locks (if any)"
+  
+  # Get lock info and try to unlock
+  lock_info=$(terraform state list >/dev/null 2>&1; echo "")
+  if [ $? -ne 0 ]; then
+    # Try to force-unlock if state is locked
+    terraform force-unlock -force "$(terraform state list 2>&1 | grep -oP "ID:\s+\K[a-f0-9\-]+" | head -1)" 2>/dev/null || true
+    info "Stale lock cleared (if present) ✓"
+  fi
+
   # Remove any Kubernetes resources from state to prevent destroy hangs
   # (they're now managed by bootstrap-aks.sh, not Terraform)
   section "Removing Kubernetes resources from state (prevents finalizer hangs)"
