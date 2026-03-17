@@ -198,24 +198,31 @@ resource "azurerm_monitor_diagnostic_setting" "aks_loadtest" {
   }
 }
 
-# ─── Note on RBAC Role Assignments ──────────────────────────────────────────
-# AKS kubelet identities need Network Contributor role on their subnets
-# (for LoadBalancer IP provisioning). The deployment engineer cannot create
-# role assignments (lacks User Access Administrator role), so Azure admin
-# creates them manually using the commands in INFRA/AZURE_ADMIN_SETUP.md.
-# See that file for the exact Azure CLI commands to run.
+resource "azurerm_monitor_diagnostic_setting" "aks_loadtest" {
+  count                      = var.deploy_loadtest_cluster ? 1 : 0
   name                       = "aks-loadtest-diag"
   target_resource_id         = module.aks_loadtest[0].cluster_id
   log_analytics_workspace_id = module.monitoring.log_analytics_workspace_id
 
   enabled_log { category = "kube-apiserver" }
+  enabled_log { category = "kube-controller-manager" }
+  enabled_log { category = "kube-scheduler" }
   enabled_log { category = "kube-audit-admin" }
+  enabled_log { category = "guard" }
+  enabled_log { category = "cluster-autoscaler" }
 
   metric {
     category = "AllMetrics"
     enabled  = true
   }
 }
+
+# ─── Note on RBAC Role Assignments ──────────────────────────────────────────
+# AKS kubelet identities need Network Contributor role on their subnets
+# (for LoadBalancer IP provisioning). The deployment engineer cannot create
+# role assignments (lacks User Access Administrator role), so Azure admin
+# creates them manually using the commands in INFRA/AZURE_ADMIN_SETUP.md.
+# See that file for the exact Azure CLI commands to run.
 
 # ─── 7. Kubernetes Bootstrap — App Cluster ────────────────────────────────────
 # These resources mirror the manual steps in INFRA/OPERATIONS.md §1.2–1.3:
