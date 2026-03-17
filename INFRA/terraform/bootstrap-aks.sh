@@ -305,45 +305,25 @@ deploy_loadtest_cluster() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-wait_for_ingress() {
-  log "Waiting for ingress-nginx LoadBalancer IP..."
-
-  local max_attempts=60
-  local attempt=0
-
-  while [ $attempt -lt $max_attempts ]; do
-    INGRESS_IP=$(kubectl get svc ingress-nginx-controller \
-      -n ingress-nginx \
-      --context "$APP_CONTEXT" \
-      -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
-
-    if [ -n "$INGRESS_IP" ]; then
-      log "Ingress IP: ${INGRESS_IP}"
-      break
-    fi
-
-    attempt=$((attempt + 1))
-    sleep 10
-    echo -n "."
-  done
-
-  if [ -z "${INGRESS_IP:-}" ]; then
-    warn "Ingress IP not yet available. Check: kubectl get svc -n ingress-nginx --context ${APP_CONTEXT}"
-    return
-  fi
-
-  echo ""
+port_forward_instructions() {
   log ""
-  log "═══ DNS Configuration ══════════════════════════════════════════════"
-  log "Add to /etc/hosts (local testing):"
-  log "  ${INGRESS_IP}  shelfware.local test.shelfware.local"
+  log "═══ Port-Forwarding Instructions ═══════════════════════════════════"
+  log "Since we removed the Azure LoadBalancer (cost savings), use port-forwarding:"
   log ""
-  log "OR configure your Azure DNS zone:"
-  log "  az network dns record-set a add-record \\"
-  log "    --resource-group rg-shelfware-tfstate \\"
-  log "    --zone-name <your-zone> \\"
-  log "    --record-set-name '@' \\"
-  log "    --ipv4-address ${INGRESS_IP}"
+  log "In a new terminal:"
+  log "  export KUBECONFIG=${KUBECONFIG}"
+  log "  kubectl port-forward svc/ingress-nginx-controller \\"
+  log "    -n ingress-nginx 8080:80 --context ${APP_CONTEXT}"
+  log ""
+  log "Then test locally:"
+  log "  # Set /etc/hosts:"
+  log "  echo '127.0.0.1  shelfware.local test.shelfware.local' >> /etc/hosts"
+  log ""
+  log "  # Or via curl (no DNS needed):"
+  log "  curl -H 'Host: shelfware.local' http://localhost:8080"
+  log "  curl -H 'Host: test.shelfware.local' http://localhost:8080"
+  log ""
+  log "Learn more: INFRA/OPERATIONS.md"
   log "════════════════════════════════════════════════════════════════════"
 }
 
@@ -455,7 +435,7 @@ main() {
     warn "App cluster is fully operational. Fix loadtest quota and re-run deploy.sh."
   fi
 
-  wait_for_ingress
+  port_forward_instructions
   smoke_test
   print_summary
 }
