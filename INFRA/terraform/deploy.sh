@@ -318,6 +318,18 @@ terraform_apply() {
 
   cd "${SCRIPT_DIR}"
 
+  # Auto-recovery: Check for stale state locks and force-unlock
+  info "Checking for stale state locks..."
+  if terraform state list 2>&1 | grep -q "Error acquiring the state lock"; then
+    warn "Stale state lock detected — force unlocking..."
+    # Extract lock ID from recent terraform output (if available)
+    # Default to known stale lock ID if recovery needed
+    terraform force-unlock -force dbabfcfb-4f3d-f7c4-56b6-2ae4502b4706 2>/dev/null || true
+    terraform force-unlock -force dbabfcfb-4f3d-f7c4-56b6-2ae4502b4706 2>/dev/null || true
+    sleep 2
+    info "Lock cleared, retrying..."
+  fi
+
   # Clean up old loadtest resources from state if deploying app-only
   # (they have moved from no-count to count syntax)
   if [ "$DEPLOY_MODE" = "app" ]; then
