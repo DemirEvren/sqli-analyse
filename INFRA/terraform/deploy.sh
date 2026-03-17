@@ -381,22 +381,17 @@ run_tf_apply_with_lock_retry() {
   fi
 
   if grep -q "Error acquiring the state lock" "${tmp_log}"; then
-    local lock_id
-    lock_id="$(grep -E '^[[:space:]]*ID:' "${tmp_log}" | awk '{print $2}' | tail -1)"
-    if [ -n "${lock_id}" ]; then
-      warn "${label}: stale Terraform lock detected (${lock_id}) — force unlocking and retrying once..."
-      terraform force-unlock -force "${lock_id}" >/dev/null 2>&1 || true
-      sleep 2
+    warn "${label}: state lock detected — retrying with -lock=false..."
+    sleep 2
 
-      set +e
-      terraform apply -auto-approve -input=false "$@"
-      rc=$?
-      set -e
+    set +e
+    terraform apply -auto-approve -input=false -lock=false "$@"
+    rc=$?
+    set -e
 
-      rm -f "${tmp_log}"
-      [ ${rc} -eq 0 ] && return 0
-      fail "${label}: terraform apply failed after lock retry"
-    fi
+    rm -f "${tmp_log}"
+    [ ${rc} -eq 0 ] && return 0
+    fail "${label}: terraform apply failed (even with -lock=false)"
   fi
 
   rm -f "${tmp_log}"
