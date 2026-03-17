@@ -1,3 +1,14 @@
+# OPTIONAL: Test Environment Deployment
+# 
+# This file is automatically DISABLED (not deployed) by default because it matches
+# the exclude pattern in root-app.yaml. To enable it:
+#
+# 1. Rename this file: mv test-app.yaml test-app.yaml.disabled
+# 2. Run: terraform apply -var="deploy_test_shelfware_namespace=true"
+#
+# The test environment is completely optional and shares infrastructure with prod.
+# It's only useful for pre-production testing. For most use cases, you only need prod.
+
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

@@ -233,6 +233,7 @@ resource "kubernetes_namespace" "prod_shelfware" {
 }
 
 resource "kubernetes_namespace" "test_shelfware" {
+  count    = var.deploy_test_shelfware_namespace ? 1 : 0
   provider = kubernetes.app
   metadata {
     name = "test-shelfware"
@@ -268,10 +269,11 @@ resource "kubernetes_secret" "postgres_prod" {
 }
 
 resource "kubernetes_secret" "postgres_test" {
+  count    = var.deploy_test_shelfware_namespace ? 1 : 0
   provider = kubernetes.app
   metadata {
     name      = "postgres-secret"
-    namespace = kubernetes_namespace.test_shelfware.metadata[0].name
+    namespace = kubernetes_namespace.test_shelfware[0].metadata[0].name
   }
 
   data = {
@@ -309,10 +311,11 @@ resource "kubernetes_secret" "ghcr_prod" {
 }
 
 resource "kubernetes_secret" "ghcr_test" {
+  count    = var.deploy_test_shelfware_namespace ? 1 : 0
   provider = kubernetes.app
   metadata {
     name      = "ghcr-credentials"
-    namespace = kubernetes_namespace.test_shelfware.metadata[0].name
+    namespace = kubernetes_namespace.test_shelfware[0].metadata[0].name
   }
 
   type = "kubernetes.io/dockerconfigjson"

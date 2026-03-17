@@ -14,7 +14,7 @@ spec:
     directory:
       recurse: false
       include: '*.yaml'
-      exclude: 'root-app.yaml'
+      exclude: '(root-app|test-app).yaml'  # Exclude test-app by default (optional environment)
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

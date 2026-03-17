@@ -172,6 +172,12 @@ variable "deploy_loadtest_cluster" {
   type        = bool
   default     = false
 }
+
+variable "deploy_test_shelfware_namespace" {
+  description = "Whether to deploy test-shelfware namespace. Set to false to only deploy prod-shelfware."
+  type        = bool
+  default     = false
+}
 # ─── Application secrets (passed through to Kubernetes secrets) ───────────────
 
 variable "postgres_password" {
