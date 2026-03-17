@@ -339,6 +339,47 @@ push_images() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+run_tf_apply_with_lock_retry() {
+  local label="$1"
+  shift
+
+  local tmp_log
+  tmp_log="$(mktemp)"
+
+  set +e
+  terraform apply -auto-approve -input=false "$@" 2>&1 | tee "${tmp_log}"
+  local rc=${PIPESTATUS[0]}
+  set -e
+
+  if [ ${rc} -eq 0 ]; then
+    rm -f "${tmp_log}"
+    return 0
+  fi
+
+  if grep -q "Error acquiring the state lock" "${tmp_log}"; then
+    local lock_id
+    lock_id="$(grep -E '^[[:space:]]*ID:' "${tmp_log}" | awk '{print $2}' | tail -1)"
+    if [ -n "${lock_id}" ]; then
+      warn "${label}: stale Terraform lock detected (${lock_id}) — force unlocking and retrying once..."
+      terraform force-unlock -force "${lock_id}" >/dev/null 2>&1 || true
+      sleep 2
+
+      set +e
+      terraform apply -auto-approve -input=false "$@"
+      rc=$?
+      set -e
+
+      rm -f "${tmp_log}"
+      [ ${rc} -eq 0 ] && return 0
+      fail "${label}: terraform apply failed after lock retry"
+    fi
+  fi
+
+  rm -f "${tmp_log}"
+  fail "${label}: terraform apply failed"
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 terraform_apply() {
   section "Step 5 — Terraform apply (two-stage)"
 
@@ -363,7 +404,7 @@ terraform_apply() {
     info "Deploying: Both app + loadtest clusters"
   fi
 
-  terraform apply -auto-approve -input=false \
+  run_tf_apply_with_lock_retry "Stage 1" \
     -var="deploy_loadtest_cluster=$([ "$DEPLOY_MODE" = "both" ] || [ "$DEPLOY_MODE" = "loadtest" ] && echo 'true' || echo 'false')" \
     "${targets[@]}"
 
@@ -402,7 +443,7 @@ terraform_apply() {
   log "Stage 2/2: Creating Kubernetes namespaces and secrets (~2 min)..."
   info "Namespaces: prod-shelfware, test-shelfware, argocd"
   
-  terraform apply -auto-approve -input=false \
+  run_tf_apply_with_lock_retry "Stage 2" \
     -var="deploy_loadtest_cluster=$([ "$DEPLOY_MODE" = "both" ] || [ "$DEPLOY_MODE" = "loadtest" ] && echo 'true' || echo 'false')"
 
   log "Stage 2 complete ✓"
