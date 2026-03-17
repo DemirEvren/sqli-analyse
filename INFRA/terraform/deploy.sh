@@ -318,33 +318,6 @@ terraform_apply() {
 
   cd "${SCRIPT_DIR}"
 
-  # Auto-recovery: Check for stale state locks and force-unlock
-  info "Checking for stale state locks..."
-  if terraform state list 2>&1 | grep -q "Error acquiring the state lock"; then
-    warn "Stale state lock detected — force unlocking..."
-    # Extract lock ID from recent terraform output (if available)
-    # Default to known stale lock ID if recovery needed
-    terraform force-unlock -force dbabfcfb-4f3d-f7c4-56b6-2ae4502b4706 2>/dev/null || true
-    terraform force-unlock -force dbabfcfb-4f3d-f7c4-56b6-2ae4502b4706 2>/dev/null || true
-    sleep 2
-    info "Lock cleared, retrying..."
-  fi
-
-  # Clean up old loadtest resources from state if deploying app-only
-  # (they have moved from no-count to count syntax)
-  if [ "$DEPLOY_MODE" = "app" ]; then
-    info "Removing old loadtest and test resources from state..."
-    terraform state rm "azurerm_monitor_diagnostic_setting.aks_loadtest" 2>/dev/null || true
-    terraform state rm "kubernetes_namespace.argocd_loadtest" 2>/dev/null || true
-    terraform state rm "kubernetes_namespace.locust" 2>/dev/null || true
-    terraform state rm "kubernetes_secret.argocd_repo_loadtest" 2>/dev/null || true
-    # Also remove test resources since we're app-only
-    terraform state rm "kubernetes_namespace.test_shelfware" 2>/dev/null || true
-    terraform state rm "kubernetes_secret.ghcr_test" 2>/dev/null || true
-    terraform state rm "kubernetes_secret.postgres_test" 2>/dev/null || true
-    terraform state rm "kubernetes_secret.argocd_repo_test" 2>/dev/null || true
-  fi
-
   # Build terraform targets based on deployment mode
   local targets=("-target=module.monitoring" "-target=module.networking" "-target=module.aks_app")
   
