@@ -331,6 +331,44 @@ metadata:
     app.kubernetes.io/version: 1.10.0
   name: ingress-nginx-controller
   namespace: ingress-nginx
+# COMMENTED OUT: LoadBalancer Service (for local development, using port-forwarding instead)
+# To re-enable external access later, uncomment the following block and change type: ClusterIP back to type: LoadBalancer
+#
+#---
+#apiVersion: v1
+#kind: Service
+#metadata:
+#  labels:
+#    app.kubernetes.io/component: controller
+#    app.kubernetes.io/instance: ingress-nginx
+#    app.kubernetes.io/name: ingress-nginx
+#    app.kubernetes.io/part-of: ingress-nginx
+#    app.kubernetes.io/version: 1.10.0
+#  name: ingress-nginx-controller
+#  namespace: ingress-nginx
+#spec:
+#  externalTrafficPolicy: Local
+#  ipFamilies:
+#  - IPv4
+#  ipFamilyPolicy: SingleStack
+#  ports:
+#  - appProtocol: http
+#    name: http
+#    port: 80
+#    protocol: TCP
+#    targetPort: http
+#  - appProtocol: https
+#    name: https
+#    port: 443
+#    protocol: TCP
+#    targetPort: https
+#  selector:
+#    app.kubernetes.io/component: controller
+#    app.kubernetes.io/instance: ingress-nginx
+#    app.kubernetes.io/name: ingress-nginx
+#  type: LoadBalancer
+
+# Temporary ClusterIP Service for local port-forwarding
 ---
 apiVersion: v1
 kind: Service
@@ -344,10 +382,6 @@ metadata:
   name: ingress-nginx-controller
   namespace: ingress-nginx
 spec:
-  externalTrafficPolicy: Local
-  ipFamilies:
-  - IPv4
-  ipFamilyPolicy: SingleStack
   ports:
   - appProtocol: http
     name: http
@@ -363,7 +397,7 @@ spec:
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: ingress-nginx
     app.kubernetes.io/name: ingress-nginx
-  type: LoadBalancer
+  type: ClusterIP
 ---
 apiVersion: v1
 kind: Service
