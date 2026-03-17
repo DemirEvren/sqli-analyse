@@ -22,3 +22,13 @@ output "nat_public_ip" {
   description = "Stable outbound IP of the NAT gateway — whitelist this in external services."
   value       = azurerm_public_ip.nat.ip_address
 }
+
+output "nat_gateway_association_app_id" {
+  description = "NAT gateway association resource ID for app subnet (for AKS dependency)."
+  value       = azurerm_subnet_nat_gateway_association.app.id
+}
+
+output "nat_gateway_association_loadtest_id" {
+  description = "NAT gateway association resource ID for loadtest subnet (for AKS dependency)."
+  value       = azurerm_subnet_nat_gateway_association.loadtest.id
+}

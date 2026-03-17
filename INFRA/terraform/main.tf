@@ -117,6 +117,9 @@ module "aks_app" {
 
   log_analytics_workspace_id = module.monitoring.log_analytics_workspace_id
 
+  # Ensure NAT gateway associations exist before creating cluster
+  subnet_nat_gateway_association_ids = [module.networking.nat_gateway_association_app_id]
+
   tags = local.common_tags
 }
 
@@ -152,6 +155,9 @@ module "aks_loadtest" {
   dns_service_ip  = "10.101.0.10"
 
   log_analytics_workspace_id = module.monitoring.log_analytics_workspace_id
+
+  # Ensure NAT gateway associations exist before creating cluster
+  subnet_nat_gateway_association_ids = [module.networking.nat_gateway_association_loadtest_id]
 
   tags = local.common_tags
 }

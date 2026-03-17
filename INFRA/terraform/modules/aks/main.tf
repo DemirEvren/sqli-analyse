@@ -29,6 +29,12 @@ resource "azurerm_kubernetes_cluster" "main" {
   kubernetes_version  = var.kubernetes_version
   node_resource_group = "${var.resource_group_name}-${var.cluster_name}-nodes"
 
+  # Ensure NAT gateway associations are created before AKS cluster
+  # (fixes race condition: "Subnet must have a NAT gateway associated")
+  depends_on = [
+    var.subnet_nat_gateway_association_ids,
+  ]
+
   # ─── OIDC + Workload Identity ─────────────────────────────────────────────
   oidc_issuer_enabled       = true
   workload_identity_enabled = true

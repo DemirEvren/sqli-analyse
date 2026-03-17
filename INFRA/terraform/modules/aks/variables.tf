@@ -82,3 +82,9 @@ variable "tags" {
   type    = map(string)
   default = {}
 }
+
+variable "subnet_nat_gateway_association_ids" {
+  description = "List of NAT gateway association resource IDs (for dependency tracking)."
+  type        = list(string)
+  default     = []
+}
