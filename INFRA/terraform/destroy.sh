@@ -38,12 +38,12 @@ DEPLOY_MODE="both"  # Default: assume both clusters were deployed
 
 for arg in "$@"; do
   case "$arg" in
-    --force)                   FORCE=true ;;
+    -f|--force)                FORCE=true ;;
     --also-destroy-backend)    ALSO_DESTROY_BACKEND=true ;;
     app)                       DEPLOY_MODE="app" ;;
     loadtest)                  DEPLOY_MODE="loadtest" ;;
     both)                      DEPLOY_MODE="both" ;;
-    *) fail "Unknown argument: $arg. Valid modes: app, loadtest, both. Valid flags: --force, --also-destroy-backend" ;;
+    *) fail "Unknown argument: $arg. Valid modes: app, loadtest, both. Valid flags: -f/--force, --also-destroy-backend" ;;
   esac
 done
 
