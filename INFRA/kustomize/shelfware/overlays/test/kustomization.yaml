@@ -13,7 +13,7 @@ patches:
 - patch: |-
     - op: replace
       path: /data/CORS_ORIGIN
-      value: "http://test.shelfware.local"
+      value: "http://localhost,http://localhost:5173,http://localhost:3001,http://test.shelfware.local:8080,http://test.shelfware.local"
   target:
     kind: ConfigMap
     name: backend-config
