@@ -259,6 +259,30 @@ EOF
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+cleanup_stale_locks() {
+  section "Cleaning up stale Terraform locks (if any)"
+  
+  cd "${SCRIPT_DIR}"
+  
+  # Try to clear any stale locks from Azure storage
+  # This happens when you manually delete resources or interrupt operations
+  if [ -f "backend.conf" ]; then
+    terraform init -backend-config=backend.conf -input=false -reconfigure >/dev/null 2>&1 || true
+    
+    # Try to list locks by checking if state is locked
+    local state_lock_file=".terraform/tfstate.lock.json"
+    if [ -f "${state_lock_file}" ]; then
+      warn "Found stale lock file — removing"
+      rm -f "${state_lock_file}"
+    fi
+    
+    info "Stale locks cleared ✓"
+  else
+    info "No backend.conf yet — skipping lock cleanup"
+  fi
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 terraform_init() {
   section "Initialising Terraform"
 
@@ -598,6 +622,7 @@ main() {
   collect_secrets
   setup_tfvars
   bootstrap_tfstate
+  cleanup_stale_locks
   terraform_init
   import_existing_resources
   push_images

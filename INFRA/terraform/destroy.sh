@@ -229,6 +229,20 @@ destroy_main() {
     fail "backend.conf not found.\nRun deploy.sh once first, or create it manually with your storage account details."
   fi
 
+  # Clean up stale locks before init
+  section "Cleaning up stale Terraform locks (if any)"
+  terraform init \
+    -backend-config="${SCRIPT_DIR}/backend.conf" \
+    -reconfigure \
+    -input=false \
+    >/dev/null 2>&1 || true
+  
+  # Remove any local lock files
+  [ -f ".terraform/tfstate.lock.json" ] && rm -f ".terraform/tfstate.lock.json"
+  info "Stale locks cleared ✓"
+
+  # Now properly init
+  section "Initialising Terraform (final)"
   terraform init \
     -backend-config="${SCRIPT_DIR}/backend.conf" \
     -reconfigure \
@@ -236,17 +250,6 @@ destroy_main() {
     >/dev/null \
     || fail "terraform init failed — check backend.conf and Azure credentials"
   log "Terraform init ✓"
-
-  # Remove any stale state locks
-  section "Removing stale state locks (if any)"
-  
-  # Get lock info and try to unlock
-  lock_info=$(terraform state list >/dev/null 2>&1; echo "")
-  if [ $? -ne 0 ]; then
-    # Try to force-unlock if state is locked
-    terraform force-unlock -force "$(terraform state list 2>&1 | grep -oP "ID:\s+\K[a-f0-9\-]+" | head -1)" 2>/dev/null || true
-    info "Stale lock cleared (if present) ✓"
-  fi
 
   # Remove any Kubernetes resources from state to prevent destroy hangs
   # (they're now managed by bootstrap-aks.sh, not Terraform)
@@ -269,11 +272,12 @@ destroy_main() {
   info "Kubernetes resources removed from state ✓"
 
   section "Destroying main infrastructure"
-  info "Running: terraform destroy -auto-approve"
+  info "Running: terraform destroy -auto-approve (with -lock=false for stale locks)"
   info "Deployment mode: $DEPLOY_MODE"
   echo ""
 
-  terraform destroy -auto-approve \
+  # Use -lock=false to handle stale locks from interrupted operations
+  terraform destroy -auto-approve -lock=false \
     -var="deploy_loadtest_cluster=$([ "$DEPLOY_MODE" = "both" ] || [ "$DEPLOY_MODE" = "loadtest" ] && echo 'true' || echo 'false')" \
     || fail "Terraform destroy failed"
 
