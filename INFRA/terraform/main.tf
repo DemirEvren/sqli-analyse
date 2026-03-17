@@ -182,25 +182,6 @@ resource "azurerm_monitor_diagnostic_setting" "aks_app" {
 resource "azurerm_monitor_diagnostic_setting" "aks_loadtest" {
   count                      = var.deploy_loadtest_cluster ? 1 : 0
   name                       = "aks-loadtest-diag"
-  target_resource_id         = module.aks_loadtest.cluster_id
-  log_analytics_workspace_id = module.monitoring.log_analytics_workspace_id
-
-  enabled_log { category = "kube-apiserver" }
-  enabled_log { category = "kube-controller-manager" }
-  enabled_log { category = "kube-scheduler" }
-  enabled_log { category = "kube-audit-admin" }
-  enabled_log { category = "guard" }
-  enabled_log { category = "cluster-autoscaler" }
-
-  metric {
-    category = "AllMetrics"
-    enabled  = true
-  }
-}
-
-resource "azurerm_monitor_diagnostic_setting" "aks_loadtest" {
-  count                      = var.deploy_loadtest_cluster ? 1 : 0
-  name                       = "aks-loadtest-diag"
   target_resource_id         = module.aks_loadtest[0].cluster_id
   log_analytics_workspace_id = module.monitoring.log_analytics_workspace_id
 
