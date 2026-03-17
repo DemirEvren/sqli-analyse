@@ -333,11 +333,16 @@ terraform_apply() {
   # Clean up old loadtest resources from state if deploying app-only
   # (they have moved from no-count to count syntax)
   if [ "$DEPLOY_MODE" = "app" ]; then
-    info "Removing old loadtest resources from state..."
+    info "Removing old loadtest and test resources from state..."
     terraform state rm "azurerm_monitor_diagnostic_setting.aks_loadtest" 2>/dev/null || true
     terraform state rm "kubernetes_namespace.argocd_loadtest" 2>/dev/null || true
     terraform state rm "kubernetes_namespace.locust" 2>/dev/null || true
     terraform state rm "kubernetes_secret.argocd_repo_loadtest" 2>/dev/null || true
+    # Also remove test resources since we're app-only
+    terraform state rm "kubernetes_namespace.test_shelfware" 2>/dev/null || true
+    terraform state rm "kubernetes_secret.ghcr_test" 2>/dev/null || true
+    terraform state rm "kubernetes_secret.postgres_test" 2>/dev/null || true
+    terraform state rm "kubernetes_secret.argocd_repo_test" 2>/dev/null || true
   fi
 
   # Build terraform targets based on deployment mode
