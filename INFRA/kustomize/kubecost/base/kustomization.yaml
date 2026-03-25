@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: kubecost
+
+resources:
+  - namespace.yaml
+  - kubecost-deployment.yaml
+  - kubecost-svc.yaml
+
+labels:
+  - pairs:
+      app.kubernetes.io/name: kubecost
+      app.kubernetes.io/version: v2.0

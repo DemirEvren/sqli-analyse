@@ -331,7 +331,7 @@ port_forward_instructions() {
 smoke_test() {
   log "Running smoke tests..."
 
-  local max_wait=600  # 10 minutes for ArgoCD to sync everything
+  local max_wait=180  # 10 minutes for ArgoCD to sync everything
   local elapsed=0
 
   log "Waiting for ArgoCD sync (up to ${max_wait}s)..."
