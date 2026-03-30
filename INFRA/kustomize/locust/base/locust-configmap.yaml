@@ -7,14 +7,7 @@ data:
     import os
     from locust import HttpUser, task, between
 
-    # BASE_URL can be:
-    # - "http://192.168.97.4:80" - ingress IP (preferred for multi-cluster setup)
-    # - "http://localhost:8080" - localhost with port-forward (for local testing)
-    # - "http://shelfware.local:80" - direct domain (if DNS configured)
-    BASE_URL = os.getenv(
-        "BASE_URL",
-        "http://192.168.97.4"
-    )
+    BASE_URL = os.getenv("BASE_URL", "http://192.168.2.56:8080")
 
     TARGET_ENV = os.getenv("TARGET_ENV", "prod").lower()
     DEFAULT_HOSTS = {"prod": "shelfware.local", "test": "test.shelfware.local"}
@@ -30,7 +23,6 @@ data:
         @task(10)
         def root(self):
             with self.client.get("/", name="GET /", catch_response=True) as response:
-                # Frontend returns HTML (200), which is success
                 if response.status_code == 200:
                     response.success()
                 else:

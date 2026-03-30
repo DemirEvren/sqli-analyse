@@ -1,16 +1,10 @@
 import os
 from locust import HttpUser, task, between
 
-# We sturen requests naar de app cluster's ingress via the shared Docker network.
-# Routing naar prod/test gebeurt via Host header.
-BASE_URL = os.getenv(
-    "BASE_URL",
-    "http://172.18.0.5"
-)
+BASE_URL = os.getenv("BASE_URL", "http://172.18.0.2")
 
-TARGET_ENV = os.getenv("TARGET_ENV", "prod").lower()  # "prod" of "test"
+TARGET_ENV = os.getenv("TARGET_ENV", "prod").lower()
 
-# Default hostnames voor jouw Gateway HTTPRoutes
 DEFAULT_HOSTS = {
     "prod": "shelfware.local",
     "test": "test.shelfware.local",
@@ -24,7 +18,6 @@ class ShelfwareUser(HttpUser):
     wait_time = between(0.5, 2.0)
 
     def on_start(self):
-        # Default headers voor alle requests
         self.client.headers.update({
             "Host": HOST_HEADER,
             "User-Agent": "locust",
@@ -32,8 +25,11 @@ class ShelfwareUser(HttpUser):
 
     @task(10)
     def root(self):
-        # Dit werkt sowieso met je echo setup
-        self.client.get("/", name="GET /")
+        with self.client.get("/", name="GET /", catch_response=True) as response:
+            if response.status_code == 200:
+                response.success()
+            else:
+                response.failure(f"Unexpected status: {response.status_code}")
 
     @task(5)
     def get_projects(self):
@@ -41,5 +37,4 @@ class ShelfwareUser(HttpUser):
 
     @task(2)
     def health(self):
-        # Alleen nuttig als je app dit heeft; anders krijg je 404 (mag ook)
-        self.client.get("/health", name="GET /health", allow_redirects=False)
+        self.client.get("/health", name="GET /health")
