@@ -276,9 +276,15 @@ destroy_main() {
   info "Deployment mode: $DEPLOY_MODE"
   echo ""
 
-  # Use -lock=false to handle stale locks from interrupted operations
-  terraform destroy -auto-approve -lock=false \
-    -var="deploy_loadtest_cluster=$([ "$DEPLOY_MODE" = "both" ] || [ "$DEPLOY_MODE" = "loadtest" ] && echo 'true' || echo 'false')" \
+  # Determine loadtest flag cleanly to avoid operator precedence issues
+  if [[ "$DEPLOY_MODE" == "both" || "$DEPLOY_MODE" == "loadtest" ]]; then
+    DEPLOY_LOADTEST="true"
+  else
+    DEPLOY_LOADTEST="false"
+  fi
+
+  terraform destroy -auto-approve \
+    -var="deploy_loadtest_cluster=${DEPLOY_LOADTEST}" \
     || fail "Terraform destroy failed"
 
   log "Main infrastructure destroyed ✓"
@@ -298,6 +304,8 @@ destroy_backend() {
   fi
 
   cd "${SCRIPT_DIR}/bootstrap"
+  terraform init -input=false >/dev/null \
+    || fail "Bootstrap terraform init failed"
   terraform destroy -auto-approve || fail "Bootstrap terraform destroy failed"
 
   log "Backend destroyed ✓"

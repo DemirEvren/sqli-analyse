@@ -57,6 +57,7 @@ resource "azurerm_kubernetes_cluster" "main" {
     name                = "system"
     node_count          = var.system_node_count
     vm_size             = var.system_node_vm_size
+    os_sku              = var.node_os_sku
     os_disk_size_gb     = 50
     vnet_subnet_id      = var.subnet_id
     max_pods            = 30
@@ -136,6 +137,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "user" {
   name                  = "user"
   kubernetes_cluster_id = azurerm_kubernetes_cluster.main.id
   vm_size               = var.user_node_vm_size
+  os_sku                = var.node_os_sku
   vnet_subnet_id        = var.subnet_id
   os_disk_size_gb       = 128
   max_pods              = 50

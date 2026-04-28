@@ -8,6 +8,7 @@ set -e
 
 KUBECONFIG_PATH="${KUBECONFIG:=$(pwd)/INFRA/terraform/kubeconfigs/merged-admin.yaml}"
 CONTEXT="shelfware-app-admin"
+HOST_IP="192.168.2.56"
 
 echo ""
 echo "╔════════════════════════════════════════════════════════════════╗"
@@ -63,13 +64,14 @@ echo "✓ ingress-nginx ready"
 echo ""
 
 echo "════════════════════════════════════════════════════════════════"
-echo "🚀 Starting Port-Forward to shelfware.local:8080"
+echo "🚀 Starting Port-Forward"
 echo "════════════════════════════════════════════════════════════════"
 echo ""
 echo "IMPORTANT: Keep this terminal open while developing!"
 echo ""
 echo "In another terminal, test with:"
 echo "  curl http://shelfware.local:8080"
+echo "  curl http://${HOST_IP}:8080 -H 'Host: shelfware.local'"
 echo "  # or open browser to http://shelfware.local:8080"
 echo ""
 echo "Press Ctrl+C to stop port-forwarding"
@@ -78,4 +80,4 @@ echo ""
 # Start port-forward
 kubectl port-forward svc/ingress-nginx-controller -n ingress-nginx 8080:80 \
   --context "$CONTEXT" \
-  --address 127.0.0.1
+  --address 127.0.0.1,"$HOST_IP"

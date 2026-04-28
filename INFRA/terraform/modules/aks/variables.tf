@@ -27,6 +27,12 @@ variable "kubernetes_version" {
   default = "1.30"
 }
 
+variable "node_os_sku" {
+  description = "OS SKU for AKS node pools (Ubuntu or AzureLinux)"
+  type        = string
+  default     = "Ubuntu"
+}
+
 variable "subnet_id" {
   description = "Resource ID of the subnet where AKS nodes will be placed."
   type        = string

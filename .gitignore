@@ -25,6 +25,8 @@ output.txt
 scripts/deploy-locust.sh
 scripts/deploy-shelfware.sh
 
+scripts/kubeconfigs/
+
 # Terraform — local secrets and generated files, never commit these
 INFRA/terraform/secrets.env
 INFRA/terraform/backend.conf
