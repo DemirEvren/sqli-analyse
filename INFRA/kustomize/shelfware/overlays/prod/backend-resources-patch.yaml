@@ -9,8 +9,8 @@ spec:
       - name: backend
         resources:
           requests:
-            cpu: "100m"
-            memory: "128Mi"
+            cpu: "215m"
+            memory: "200Mi"
           limits:
-            cpu: "500m"
-            memory: "500Mi"
+            cpu: "270m"
+            memory: "250Mi"
