@@ -10,6 +10,7 @@ resources:
 - keda-scaledobject.yaml
 
 patches:
+- path: backend-resources-patch.yaml
 - patch: |-
     - op: replace
       path: /data/CORS_ORIGIN
@@ -25,3 +26,11 @@ images:
   newTag: latest
 - name: ghcr.io/demirevren/shelfware-frontend
   newTag: latest
+
+# Replicas worden door de CI-pipeline geflipt (1 = actief, 0 = inactief)
+# zodat slechts één env tegelijk vCPU gebruikt (Azure-quota: 10 vCPU).
+replicas:
+- name: backend
+  count: 1
+- name: frontend
+  count: 1
